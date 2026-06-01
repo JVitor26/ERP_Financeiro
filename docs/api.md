@@ -31,7 +31,7 @@ Payload:
 }
 ```
 
-`mfa_code` e opcional, exceto quando `mfa_habilitado=True` para o usuario. No MVP o codigo aceito e `000000`.
+`mfa_code` e opcional, exceto quando `mfa_habilitado=True` para o usuario. Nesse caso deve ser um codigo TOTP valido gerado pelo aplicativo autenticador ou um backup code.
 
 Resposta:
 
@@ -1369,7 +1369,407 @@ Payload:
 }
 ```
 
-## 6. Permissoes esperadas por recurso
+## 6. MFA
+
+### Iniciar configuracao
+
+```text
+POST /api/auth/mfa/setup/
+```
+
+Gera secret TOTP e QR code. Nao requer payload. Retorna:
+
+```json
+{
+  "secret": "JBSWY3DPEHPK3PXP",
+  "qr_code_base64": "<png em base64>",
+  "otpauth_uri": "otpauth://totp/..."
+}
+```
+
+### Ativar MFA
+
+```text
+POST /api/auth/mfa/ativar/
+```
+
+Payload:
+
+```json
+{ "codigo": "123456" }
+```
+
+Valida o TOTP e ativa MFA. Retorna 8 backup codes de uso unico.
+
+### Verificar codigo
+
+```text
+POST /api/auth/mfa/verificar/
+```
+
+Payload:
+
+```json
+{ "codigo": "123456" }
+```
+
+Aceita codigo TOTP ou backup code. Backup codes sao consumidos apos uso.
+
+### Desativar MFA
+
+```text
+POST /api/auth/mfa/desativar/
+```
+
+Payload:
+
+```json
+{ "senha": "MinhaSenh@123" }
+```
+
+Exige confirmacao de senha atual.
+
+### Listar backup codes (mascarados)
+
+```text
+GET /api/auth/mfa/backup-codes/
+```
+
+Retorna codigos com os 7 primeiros caracteres mascarados por `*`.
+
+### Regenerar backup codes
+
+```text
+POST /api/auth/mfa/regenerar-backup-codes/
+```
+
+Invalida todos os backup codes anteriores e gera 8 novos.
+
+---
+
+## 7. Financeiro avancado
+
+### Recorrencias financeiras
+
+```text
+GET    /api/financeiro/recorrencias/
+POST   /api/financeiro/recorrencias/
+GET    /api/financeiro/recorrencias/{id}/
+PUT    /api/financeiro/recorrencias/{id}/
+DELETE /api/financeiro/recorrencias/{id}/
+POST   /api/financeiro/recorrencias/{id}/pausar/
+POST   /api/financeiro/recorrencias/{id}/reativar/
+POST   /api/financeiro/recorrencias/{id}/cancelar/
+```
+
+Filtros: `tipo`, `status`, `periodicidade`
+
+Campos principais: `tipo` (`pagar`/`receber`), `descricao`, `valor`, `periodicidade`, `data_inicio`, `data_fim`, `dia_vencimento`, `status`.
+
+### Periodos de fechamento financeiro
+
+```text
+GET    /api/financeiro/periodos-fechamento/
+POST   /api/financeiro/periodos-fechamento/
+GET    /api/financeiro/periodos-fechamento/{id}/
+POST   /api/financeiro/periodos-fechamento/{id}/fechar/
+POST   /api/financeiro/periodos-fechamento/{id}/reabrir/
+```
+
+`POST /reabrir/` exige `{ "justificativa": "..." }`.
+
+### Rateios de lancamento
+
+```text
+GET    /api/financeiro/rateios/
+POST   /api/financeiro/rateios/
+GET    /api/financeiro/rateios/{id}/
+DELETE /api/financeiro/rateios/{id}/
+```
+
+Filtros: `origem_modelo`, `centro_custo`, `plano_conta`
+
+### Alcadas de aprovacao
+
+```text
+GET    /api/financeiro/alcadas-aprovacao/
+POST   /api/financeiro/alcadas-aprovacao/
+GET    /api/financeiro/alcadas-aprovacao/{id}/
+PUT    /api/financeiro/alcadas-aprovacao/{id}/
+DELETE /api/financeiro/alcadas-aprovacao/{id}/
+```
+
+Filtros: `ativo`
+
+### Credenciais bancarias
+
+```text
+GET    /api/financeiro/credenciais-bancarias/
+POST   /api/financeiro/credenciais-bancarias/
+GET    /api/financeiro/credenciais-bancarias/{id}/
+PUT    /api/financeiro/credenciais-bancarias/{id}/
+DELETE /api/financeiro/credenciais-bancarias/{id}/
+```
+
+Filtros: `ativa`, `tipo_integracao`. Campo `client_secret` e somente escrita.
+
+### Importacoes OFX
+
+```text
+GET    /api/financeiro/importacoes-ofx/
+POST   /api/financeiro/importacoes-ofx/    (multipart/form-data)
+GET    /api/financeiro/importacoes-ofx/{id}/
+```
+
+Filtros: `status`, `conta_bancaria`. Processamento e sincronno — cria conciliacoes pendentes.
+
+### Regras de conciliacao
+
+```text
+GET    /api/financeiro/regras-conciliacao/
+POST   /api/financeiro/regras-conciliacao/
+GET    /api/financeiro/regras-conciliacao/{id}/
+PUT    /api/financeiro/regras-conciliacao/{id}/
+DELETE /api/financeiro/regras-conciliacao/{id}/
+```
+
+Filtros: `ativa`
+
+### Cobrancas financeiras (boleto/PIX)
+
+```text
+GET    /api/financeiro/cobrancas/
+POST   /api/financeiro/cobrancas/
+GET    /api/financeiro/cobrancas/{id}/
+PUT    /api/financeiro/cobrancas/{id}/
+DELETE /api/financeiro/cobrancas/{id}/
+POST   /api/financeiro/cobrancas/{id}/gerar_pix/
+```
+
+Filtros: `tipo`, `status`
+
+`POST /gerar_pix/` — gera codigo PIX EMV e salva no campo `codigo_pix`.
+
+### Regras de cobranca (regua)
+
+```text
+GET    /api/financeiro/regras-cobranca/
+POST   /api/financeiro/regras-cobranca/
+GET    /api/financeiro/regras-cobranca/{id}/
+PUT    /api/financeiro/regras-cobranca/{id}/
+DELETE /api/financeiro/regras-cobranca/{id}/
+```
+
+Filtros: `ativo`, `gatilho`, `canal`
+
+### Historico de cobranca
+
+```text
+GET /api/financeiro/historico-cobranca/
+GET /api/financeiro/historico-cobranca/{id}/
+```
+
+Somente leitura. Filtros: `canal`, `status_envio`
+
+### Transferencias internas
+
+```text
+GET    /api/financeiro/transferencias-internas/
+POST   /api/financeiro/transferencias-internas/
+GET    /api/financeiro/transferencias-internas/{id}/
+DELETE /api/financeiro/transferencias-internas/{id}/
+```
+
+Filtros: `conta_origem`, `conta_destino`
+
+Ao criar, gera automaticamente duas `MovimentacaoFinanceira` (saida e entrada).
+
+### Contratos financeiros (emprestimos)
+
+```text
+GET    /api/financeiro/contratos-financeiros/
+POST   /api/financeiro/contratos-financeiros/
+GET    /api/financeiro/contratos-financeiros/{id}/
+PUT    /api/financeiro/contratos-financeiros/{id}/
+DELETE /api/financeiro/contratos-financeiros/{id}/
+POST   /api/financeiro/contratos-financeiros/{id}/gerar_parcelas/
+```
+
+Filtros: `tipo`, `status`
+
+`POST /gerar_parcelas/` — gera o cronograma de parcelas calculando juros mensais.
+
+### Aplicacoes financeiras
+
+```text
+GET    /api/financeiro/aplicacoes-financeiras/
+POST   /api/financeiro/aplicacoes-financeiras/
+GET    /api/financeiro/aplicacoes-financeiras/{id}/
+PUT    /api/financeiro/aplicacoes-financeiras/{id}/
+DELETE /api/financeiro/aplicacoes-financeiras/{id}/
+POST   /api/financeiro/aplicacoes-financeiras/{id}/resgatar/
+```
+
+Filtros: `tipo`, `status`
+
+`POST /resgatar/` — payload: `{ "valor_resgatado": "10500.00", "valor_imposto": "75.00", "data_resgate": "2026-06-01" }`
+
+---
+
+## 8. Contabil
+
+Base URL: `/api/contabil/`
+
+### Contas contabeis
+
+```text
+GET    /api/contabil/contas-contabeis/
+POST   /api/contabil/contas-contabeis/
+GET    /api/contabil/contas-contabeis/{id}/
+PUT    /api/contabil/contas-contabeis/{id}/
+DELETE /api/contabil/contas-contabeis/{id}/
+GET    /api/contabil/contas-contabeis/arvore/
+```
+
+Filtros: `natureza`, `ativo`, `aceita_lancamento`, `pai`
+
+`GET /arvore/` — retorna hierarquia completa com filhos aninhados.
+
+### Centros de resultado contabil
+
+```text
+GET    /api/contabil/centros-resultado/
+POST   /api/contabil/centros-resultado/
+GET    /api/contabil/centros-resultado/{id}/
+PUT    /api/contabil/centros-resultado/{id}/
+DELETE /api/contabil/centros-resultado/{id}/
+```
+
+### Historicos padrao
+
+```text
+GET    /api/contabil/historicos-padrao/
+POST   /api/contabil/historicos-padrao/
+GET    /api/contabil/historicos-padrao/{id}/
+PUT    /api/contabil/historicos-padrao/{id}/
+DELETE /api/contabil/historicos-padrao/{id}/
+```
+
+### Competencias contabeis
+
+```text
+GET    /api/contabil/competencias/
+POST   /api/contabil/competencias/
+GET    /api/contabil/competencias/{id}/
+POST   /api/contabil/competencias/{id}/fechar/
+POST   /api/contabil/competencias/{id}/reabrir/
+```
+
+`POST /reabrir/` exige `{ "justificativa": "..." }`.
+
+### Lancamentos contabeis
+
+```text
+GET    /api/contabil/lancamentos/
+POST   /api/contabil/lancamentos/
+GET    /api/contabil/lancamentos/{id}/
+PUT    /api/contabil/lancamentos/{id}/
+DELETE /api/contabil/lancamentos/{id}/
+POST   /api/contabil/lancamentos/{id}/estornar/
+```
+
+Filtros: `tipo`, `estornado`, `excluido_logicamente`
+Query params adicionais: `data_ini`, `data_fim`, `conta`
+
+`POST /estornar/` — payload: `{ "motivo": "...", "data_estorno": "2026-06-01" }`
+
+### Relatorios contabeis
+
+```text
+GET /api/contabil/relatorios/diario/?data_ini=...&data_fim=...
+GET /api/contabil/relatorios/razao/?conta={id}&data_ini=...&data_fim=...
+GET /api/contabil/relatorios/balancete/?ano=2026&mes=6
+GET /api/contabil/relatorios/balanco-patrimonial/?data_ini=...&data_fim=...
+GET /api/contabil/relatorios/dre/?data_ini=...&data_fim=...
+```
+
+---
+
+## 9. Fiscal
+
+Base URL: `/api/fiscal/`
+
+### Configuracao fiscal
+
+```text
+GET    /api/fiscal/configuracao-fiscal/
+POST   /api/fiscal/configuracao-fiscal/
+GET    /api/fiscal/configuracao-fiscal/{id}/
+PUT    /api/fiscal/configuracao-fiscal/{id}/
+```
+
+### Notas fiscais
+
+```text
+GET    /api/fiscal/notas-fiscais/
+POST   /api/fiscal/notas-fiscais/
+GET    /api/fiscal/notas-fiscais/{id}/
+PUT    /api/fiscal/notas-fiscais/{id}/
+POST   /api/fiscal/notas-fiscais/{id}/cancelar/
+POST   /api/fiscal/notas-fiscais/{id}/calcular_impostos/
+```
+
+Filtros: `status`, `tipo`, `cliente`, `fornecedor`
+Query params: `data_ini`, `data_fim`
+
+`POST /cancelar/` — payload: `{ "justificativa": "..." }` (minimo 15 caracteres)
+
+`POST /calcular_impostos/` — retorna ISS, PIS, COFINS e INSS calculados.
+
+### Eventos fiscais
+
+```text
+GET /api/fiscal/eventos-fiscais/
+GET /api/fiscal/eventos-fiscais/{id}/
+```
+
+Somente leitura.
+
+### Impostos apurados
+
+```text
+GET    /api/fiscal/impostos-apurados/
+POST   /api/fiscal/impostos-apurados/
+GET    /api/fiscal/impostos-apurados/{id}/
+PUT    /api/fiscal/impostos-apurados/{id}/
+DELETE /api/fiscal/impostos-apurados/{id}/
+```
+
+Filtros: `ano`, `mes`, `tipo_imposto`
+
+### Obrigacoes fiscais
+
+```text
+GET    /api/fiscal/obrigacoes-fiscais/
+POST   /api/fiscal/obrigacoes-fiscais/
+GET    /api/fiscal/obrigacoes-fiscais/{id}/
+PUT    /api/fiscal/obrigacoes-fiscais/{id}/
+DELETE /api/fiscal/obrigacoes-fiscais/{id}/
+```
+
+### Configuracao de imposto por servico
+
+```text
+GET    /api/fiscal/config-imposto-servico/
+POST   /api/fiscal/config-imposto-servico/
+GET    /api/fiscal/config-imposto-servico/{id}/
+PUT    /api/fiscal/config-imposto-servico/{id}/
+DELETE /api/fiscal/config-imposto-servico/{id}/
+```
+
+---
+
+## 10. Permissoes esperadas por recurso
 
 Padrao:
 
