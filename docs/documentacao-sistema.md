@@ -158,6 +158,45 @@ Responsavel pela operacao financeira:
 - relatorios;
 - anexos financeiros.
 
+Recursos avancados (ver `docs/modulo-financeiro-avancado.md`):
+
+- recorrencias financeiras (despesas e receitas recorrentes);
+- periodo de fechamento financeiro;
+- rateio por multiplos centros de custo;
+- alcadas de aprovacao por valor/fornecedor;
+- credenciais bancarias;
+- importacao de extrato OFX;
+- regras de conciliacao automatica;
+- cobrancas (boleto/PIX) com regua de cobranca;
+- transferencias internas entre contas bancarias;
+- contratos financeiros (emprestimos e financiamentos) com geracao de parcelas;
+- aplicacoes financeiras com controle de resgate.
+
+### Contabil
+
+Motor de escrituracao contabil por partidas dobradas (ver `docs/modulo-contabil.md`):
+
+- plano de contas contabil com hierarquia;
+- centros de resultado contabil;
+- historicos padrao;
+- competencias contabeis com fechamento e reabertura;
+- lancamentos contabeis com partidas debitoras e credoras;
+- estorno de lancamentos;
+- exclusao logica;
+- relatorios: diario, razao, balancete, balanco patrimonial e DRE contabil.
+
+### Fiscal
+
+Gerenciamento de documentos fiscais e obrigacoes tributarias (ver `docs/modulo-fiscal.md`):
+
+- configuracao fiscal por empresa (regime tributario, aliquotas, CNAE);
+- notas fiscais (NF-e, NFS-e, NFC-e, CT-e) com itens e eventos;
+- calculo de impostos (ISS, PIS, COFINS, IRPJ, CSLL, INSS);
+- cancelamento de nota com registro de evento;
+- apuracao de impostos por periodo;
+- obrigacoes fiscais com prazo e status;
+- configuracao de aliquotas por servico.
+
 ### Inteligencia
 
 Responsavel pela camada inicial de analise:
@@ -181,6 +220,13 @@ Telas disponiveis:
 - Financeiro: contas a receber, contas a pagar, criacao de titulos, baixa e recebimento.
 - Aprovacoes: fila de aprovacoes pendentes e historico de decisoes.
 - Cadastros: clientes, fornecedores, servicos, contas bancarias, centros de custo e plano de contas.
+- Contabil: lancamentos, plano de contas contabil, competencias, balancete, balanco patrimonial e DRE.
+- Fiscal: notas fiscais, impostos apurados e obrigacoes fiscais.
+- Tesouraria: transferencias internas, contratos financeiros (emprestimos) e aplicacoes financeiras.
+- Recorrencias: lancamentos recorrentes de pagar e receber.
+- Cobrancas: boletos e cobrancas PIX.
+- Importacao OFX: upload de extratos bancarios e geracao de conciliacoes pendentes.
+- Fechamento: periodos financeiros fechados e historico de reabertura.
 - Inteligencia: alertas, anomalias, previsoes, varredura e feedback.
 - Auditoria: eventos imutaveis e notificacoes.
 - Empresas: empresas e modulos instalados.
@@ -203,8 +249,8 @@ Regras implementadas:
 - login falho registra evento `core.auth.login_falhou`;
 - tentativas falhas sao contadas por `username` e IP;
 - apos o limite configurado, o usuario fica bloqueado temporariamente;
-- usuarios com `mfa_habilitado=True` precisam enviar `mfa_code`;
-- o codigo MFA aceito no MVP e `000000`;
+- usuarios com `mfa_habilitado=True` precisam enviar `mfa_code` no login;
+- o MFA usa TOTP real (Google Authenticator, Authy, etc.) — ver `docs/modulo-mfa.md`;
 - refresh de token usa `POST /api/auth/token/refresh/`;
 - o painel consulta `GET /api/auth/me/` apos autenticar.
 
@@ -896,3 +942,20 @@ node --check core\static\frontend\js\data.js
 node --check core\static\frontend\js\ui.js
 git status -sb
 ```
+
+---
+
+## 33. Documentacao por modulo
+
+Cada modulo implementado possui documentacao detalhada em arquivo separado:
+
+| Arquivo | Conteudo |
+|---|---|
+| `docs/modulo-contabil.md` | Motor contabil, plano de contas, lancamentos, partidas, competencias, relatorios (diario, razao, balancete, BP, DRE) |
+| `docs/modulo-fiscal.md` | Notas fiscais, calculo de impostos, apuracao, obrigacoes fiscais, configuracao tributaria |
+| `docs/modulo-financeiro-avancado.md` | Recorrencias, fechamento financeiro, rateio, alcadas, OFX, conciliacao, cobrancas, transferencias, contratos, aplicacoes |
+| `docs/modulo-mfa.md` | MFA TOTP, fluxo de ativacao, backup codes, endpoints, auditoria |
+| `docs/infraestrutura.md` | Celery (tasks e beat schedule), backup/restore de banco, testes automatizados, logs |
+| `docs/api.md` | Referencia completa de endpoints da API |
+| `docs/modelo-dados.md` | Diagrama e descricao do modelo de dados |
+| `docs/arquitetura.md` | Decisoes de arquitetura e design |

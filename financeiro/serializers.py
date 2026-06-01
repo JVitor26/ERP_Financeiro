@@ -279,3 +279,132 @@ class ConciliacaoImportCSVSerializer(serializers.Serializer):
 
 class ConciliacaoManualSerializer(serializers.Serializer):
     movimentacao = serializers.IntegerField()
+
+
+# ─── NOVOS SERIALIZERS (Fase 2/3/4) ─────────────────────────────────────────
+
+class RecorrenciaFinanceiraSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import RecorrenciaFinanceira
+        model = RecorrenciaFinanceira
+        fields = "__all__"
+        read_only_fields = ["empresa", "total_gerado", "ultima_geracao"]
+
+
+class PeriodoFechamentoSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import PeriodoFechamento
+        model = PeriodoFechamento
+        fields = "__all__"
+        read_only_fields = ["empresa", "fechado_em", "fechado_por", "reaberto_em", "reaberto_por"]
+
+
+class RateioLancamentoSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import RateioLancamento
+        model = RateioLancamento
+        fields = "__all__"
+        read_only_fields = ["empresa"]
+
+
+class AlcadaAprovadorSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import AlcadaAprovador
+        model = AlcadaAprovador
+        fields = "__all__"
+
+
+class AlcadaAprovacaoSerializer(serializers.ModelSerializer):
+    aprovadores = AlcadaAprovadorSerializer(many=True, read_only=True)
+
+    class Meta:
+        from .models import AlcadaAprovacao
+        model = AlcadaAprovacao
+        fields = "__all__"
+        read_only_fields = ["empresa"]
+
+
+class CredencialBancariaSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import CredencialBancaria
+        model = CredencialBancaria
+        fields = "__all__"
+        read_only_fields = ["empresa"]
+        extra_kwargs = {"client_secret": {"write_only": True}}
+
+
+class ImportacaoOFXSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import ImportacaoOFX
+        model = ImportacaoOFX
+        fields = "__all__"
+        read_only_fields = [
+            "empresa", "status", "total_lancamentos", "lancamentos_importados",
+            "lancamentos_duplicados", "data_inicio_extrato", "data_fim_extrato",
+            "erro", "importado_por",
+        ]
+
+
+class RegraConciliacaoSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import RegraConciliacao
+        model = RegraConciliacao
+        fields = "__all__"
+        read_only_fields = ["empresa"]
+
+
+class CobrancaFinanceiraSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import CobrancaFinanceira
+        model = CobrancaFinanceira
+        fields = "__all__"
+        read_only_fields = ["empresa"]
+
+
+class RegraCobrancanSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import RegraCobrancan
+        model = RegraCobrancan
+        fields = "__all__"
+        read_only_fields = ["empresa"]
+
+
+class HistoricoCobrancaSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import HistoricoCobranca
+        model = HistoricoCobranca
+        fields = "__all__"
+        read_only_fields = ["empresa", "enviado_em"]
+
+
+class TransferenciaInternaSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import TransferenciaInterna
+        model = TransferenciaInterna
+        fields = "__all__"
+        read_only_fields = ["empresa", "movimentacao_saida", "movimentacao_entrada"]
+
+
+class ParcelaContratoFinanceiroSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import ParcelaContratoFinanceiro
+        model = ParcelaContratoFinanceiro
+        fields = "__all__"
+
+
+class ContratoFinanceiroSerializer(serializers.ModelSerializer):
+    parcelas = ParcelaContratoFinanceiroSerializer(many=True, read_only=True)
+
+    class Meta:
+        from .models import ContratoFinanceiro
+        model = ContratoFinanceiro
+        fields = "__all__"
+        read_only_fields = ["empresa", "saldo_devedor"]
+
+
+class AplicacaoFinanceiraSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import AplicacaoFinanceira
+        model = AplicacaoFinanceira
+        fields = "__all__"
+        read_only_fields = ["empresa"]

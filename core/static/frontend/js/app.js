@@ -360,6 +360,14 @@ function renderActiveView() {
         auditoria: renderAudit,
         empresas: renderCompanies,
         relatorios: renderReports,
+        contabil: renderContabil,
+        fiscal: renderFiscal,
+        tesouraria: renderTesouraria,
+        recorrencias: renderRecorrencias,
+        cobrancas: renderCobrancas,
+        importacao: renderImportacaoOFX,
+        fechamento: renderFechamento,
+        permissoes: renderPermissoes,
     };
     const renderer = renderers[state.activeView];
     if (renderer) {
@@ -1608,3 +1616,673 @@ function debounce(callback, wait) {
         timeout = window.setTimeout(() => callback(...args), wait);
     };
 }
+
+// ─── HELPERS COMPARTILHADOS ──────────────────────────────────────────────────
+
+function rt(container, rows, columns) {
+    if (!container) return;
+    container.innerHTML = renderTable({ columns, rows, emptyTitle: "Sem registros" });
+}
+
+function bindTabGroup(viewSelector, onTabChange) {
+    const view = $(viewSelector);
+    if (!view || view._tabsBound) return;
+    view._tabsBound = true;
+    view.querySelectorAll("[data-tab]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            view.querySelectorAll("[data-tab]").forEach((b) => b.classList.remove("is-active"));
+            btn.classList.add("is-active");
+            onTabChange(btn.dataset.tab);
+        });
+    });
+}
+
+// ─── CONTABILIDADE ──────────────────────────────────────────────────────────
+
+let contabilTab = "lancamentos-contabeis";
+
+async function renderContabil() {
+    const container = $("#contabil-content");
+    if (!container) return;
+    bindTabGroup("#contabil-view", (tab) => {
+        contabilTab = tab;
+        renderContabilTab();
+    });
+    renderContabilTab();
+}
+
+async function renderContabilTab() {
+    const container = $("#contabil-content");
+    if (!container) return;
+    container.innerHTML = '<p class="muted">Carregando...</p>';
+    try {
+        if (contabilTab === "lancamentos-contabeis") {
+            const items = await api.list(ENDPOINTS.lancamentosContabeis, { page_size: 100, ordering: "-data_lancamento" });
+            rt(container, normalizeList(items), [
+                { key: "numero", label: "N°" },
+                { key: "data_lancamento", label: "Data", render: (v) => formatDate(v) },
+                { key: "historico", label: "Historico" },
+                { key: "tipo", label: "Tipo", render: (v) => badge(v, "info") },
+                { key: "estornado", label: "Estornado", render: (v) => v ? badge("Sim", "danger") : "" },
+            ]);
+        } else if (contabilTab === "plano-contabil") {
+            const items = await api.list(ENDPOINTS.contasContabeis, { page_size: 200 });
+            rt(container, normalizeList(items), [
+                { key: "codigo", label: "Codigo" },
+                { key: "nome", label: "Conta" },
+                { key: "natureza", label: "Natureza", render: (v) => badge(v, "info") },
+                { key: "tipo_saldo", label: "Saldo" },
+                { key: "aceita_lancamento", label: "Analitica", render: (v) => v ? "Sim" : "Nao" },
+                { key: "ativo", label: "Ativo", render: (v) => v ? badge("Sim", "good") : badge("Nao", "muted") },
+            ]);
+        } else if (contabilTab === "competencias-contabeis") {
+            const items = await api.list(ENDPOINTS.competenciasContabeis, { page_size: 60 });
+            rt(container, normalizeList(items), [
+                { key: "ano", label: "Ano" },
+                { key: "mes", label: "Mes" },
+                { key: "status", label: "Status", render: (v) => badge(v, v === "fechado" ? "danger" : v === "aberto" ? "good" : "warn") },
+                { key: "fechado_em", label: "Fechado em", render: (v) => formatDate(v) },
+            ]);
+        } else if (contabilTab === "balancete") {
+            const result = await api.request(`${ENDPOINTS.relatoriosContabeis}balancete/?ano=${new Date().getFullYear()}&mes=${new Date().getMonth() + 1}`);
+            const items = result.contas || result.data || [];
+            rt(container, Array.isArray(items) ? items : [], [
+                { key: "codigo", label: "Codigo" },
+                { key: "nome", label: "Conta" },
+                { key: "natureza", label: "Natureza" },
+                { key: "debitos", label: "Debitos", render: (v) => formatCurrency(v) },
+                { key: "creditos", label: "Creditos", render: (v) => formatCurrency(v) },
+                { key: "saldo", label: "Saldo", render: (v) => formatCurrency(v) },
+            ]);
+        } else if (contabilTab === "balanco") {
+            const result = await api.request(`${ENDPOINTS.relatoriosContabeis}balanco_patrimonial/`);
+            const data = result.data || result || {};
+            container.innerHTML = `
+                <div class="kpi-grid small">
+                    <div class="kpi-card"><p class="eyebrow">Ativo Total</p><strong>${formatCurrency(data.ativo)}</strong></div>
+                    <div class="kpi-card"><p class="eyebrow">Passivo Total</p><strong>${formatCurrency(data.passivo)}</strong></div>
+                    <div class="kpi-card"><p class="eyebrow">Patrimonio Liquido</p><strong>${formatCurrency(data.patrimonio_liquido)}</strong></div>
+                </div>`;
+        } else if (contabilTab === "dre-contabil") {
+            const result = await api.request(`${ENDPOINTS.relatoriosContabeis}dre/?ano=${new Date().getFullYear()}&mes=${new Date().getMonth() + 1}`);
+            const data = result.data || result || {};
+            container.innerHTML = `
+                <div class="kpi-grid small">
+                    <div class="kpi-card"><p class="eyebrow">Receitas</p><strong>${formatCurrency(data.receitas)}</strong></div>
+                    <div class="kpi-card"><p class="eyebrow">Despesas</p><strong>${formatCurrency(data.despesas)}</strong></div>
+                    <div class="kpi-card"><p class="eyebrow">Custos</p><strong>${formatCurrency(data.custos)}</strong></div>
+                    <div class="kpi-card ${toNumber(data.resultado) >= 0 ? "kpi-positive" : "kpi-negative"}"><p class="eyebrow">Resultado</p><strong>${formatCurrency(data.resultado)}</strong></div>
+                </div>`;
+        }
+    } catch (error) {
+        container.innerHTML = `<p class="muted">Erro ao carregar: ${escapeHtml(error.message)}</p>`;
+    }
+}
+
+// ─── FISCAL ─────────────────────────────────────────────────────────────────
+
+let fiscalTab = "notas-fiscais";
+
+async function renderFiscal() {
+    bindTabGroup("#fiscal-view", (tab) => {
+        fiscalTab = tab;
+        renderFiscalTab();
+    });
+    renderFiscalTab();
+
+    const newBtn = $("#new-nota-fiscal");
+    if (newBtn && !newBtn._bound) {
+        newBtn._bound = true;
+        newBtn.addEventListener("click", () => openNotaFiscalModal());
+    }
+}
+
+async function renderFiscalTab() {
+    const container = $("#fiscal-content");
+    if (!container) return;
+    container.innerHTML = '<p class="muted">Carregando...</p>';
+    try {
+        if (fiscalTab === "notas-fiscais") {
+            const items = await api.list(ENDPOINTS.notasFiscais, { page_size: 100 });
+            rt(container, normalizeList(items), [
+                { key: "numero", label: "Numero" },
+                { key: "serie", label: "Serie" },
+                { key: "tipo", label: "Tipo", render: (v) => badge(v, "info") },
+                { key: "data_emissao", label: "Emissao", render: (v) => formatDate(v) },
+                { key: "valor_total", label: "Total", render: (v) => formatCurrency(v) },
+                { key: "status", label: "Status", render: (v) => badge(v, v === "autorizada" ? "good" : v === "cancelada" ? "danger" : "warn") },
+            ]);
+        } else if (fiscalTab === "impostos-apurados") {
+            const items = await api.list(ENDPOINTS.impostosApurados, { page_size: 100 });
+            rt(container, normalizeList(items), [
+                { key: "ano", label: "Ano" },
+                { key: "mes", label: "Mes" },
+                { key: "tipo_imposto", label: "Imposto", render: (v) => badge(v, "info") },
+                { key: "base_calculo", label: "Base", render: (v) => formatCurrency(v) },
+                { key: "aliquota", label: "Aliquota", render: (v) => `${v}%` },
+                { key: "valor_apurado", label: "Apurado", render: (v) => formatCurrency(v) },
+                { key: "valor_a_pagar", label: "A pagar", render: (v) => formatCurrency(v) },
+            ]);
+        } else if (fiscalTab === "obrigacoes-fiscais") {
+            const items = await api.list(ENDPOINTS.obrigacoesFiscais, { page_size: 100 });
+            rt(container, normalizeList(items), [
+                { key: "descricao", label: "Descricao" },
+                { key: "tipo", label: "Tipo" },
+                { key: "competencia_ano", label: "Ano" },
+                { key: "competencia_mes", label: "Mes" },
+                { key: "data_vencimento", label: "Vencimento", render: (v) => formatDate(v) },
+                { key: "status", label: "Status", render: (v) => badge(v, v === "cumprida" ? "good" : v === "atrasada" ? "danger" : "warn") },
+            ]);
+        } else if (fiscalTab === "config-fiscal") {
+            container.innerHTML = `<p class="muted">Configuracao fiscal disponivel via API: <a href="/api/fiscal/configuracao-fiscal/" target="_blank">/api/fiscal/configuracao-fiscal/</a></p>`;
+        }
+    } catch (error) {
+        container.innerHTML = `<p class="muted">Erro ao carregar: ${escapeHtml(error.message)}</p>`;
+    }
+}
+
+function openNotaFiscalModal() {
+    openModal({
+        title: "Nova Nota Fiscal",
+        body: `
+        <form id="nota-fiscal-form" class="modal-form">
+            <div class="form-grid">
+                <label>Tipo <select name="tipo" required><option value="nfse">NFS-e</option><option value="nfe">NF-e</option><option value="nfce">NFC-e</option></select></label>
+                <label>Data de emissao <input type="date" name="data_emissao" required value="${new Date().toISOString().slice(0,10)}"></label>
+                <label>Valor total <input type="number" name="valor_total" step="0.01" min="0.01" required></label>
+                <label>Numero <input type="text" name="numero" placeholder="Opcional"></label>
+                <label class="span-2">Observacao <textarea name="observacao"></textarea></label>
+            </div>
+            <button class="btn btn-primary btn-wide" type="submit">Salvar nota fiscal</button>
+        </form>`,
+    });
+    $("#nota-fiscal-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = e.currentTarget.querySelector("button");
+        setBusy(btn, true);
+        try {
+            await api.create(ENDPOINTS.notasFiscais, serializeForm(e.currentTarget));
+            toast("Nota fiscal criada.", "good");
+            closeModal();
+            renderFiscalTab();
+        } catch (err) {
+            toast(err.message || "Erro ao criar nota.", "danger");
+        } finally {
+            setBusy(btn, false);
+        }
+    });
+}
+
+// ─── TESOURARIA ─────────────────────────────────────────────────────────────
+
+let tesourariaTab = "transferencias";
+
+async function renderTesouraria() {
+    bindTabGroup("#tesouraria-view", (tab) => {
+        tesourariaTab = tab;
+        renderTesourariaTab();
+    });
+    renderTesourariaTab();
+
+    const newBtn = $("#new-transferencia");
+    if (newBtn && !newBtn._bound) {
+        newBtn._bound = true;
+        newBtn.addEventListener("click", () => openTransferenciaModal());
+    }
+}
+
+async function renderTesourariaTab() {
+    const container = $("#tesouraria-content");
+    if (!container) return;
+    container.innerHTML = '<p class="muted">Carregando...</p>';
+    try {
+        if (tesourariaTab === "transferencias") {
+            const items = await api.list(ENDPOINTS.transferenciasInternas, { page_size: 100 });
+            rt(container, normalizeList(items), [
+                { key: "data_transferencia", label: "Data", render: (v) => formatDate(v) },
+                { key: "descricao", label: "Descricao" },
+                { key: "valor", label: "Valor", render: (v) => formatCurrency(v) },
+                { key: "tarifa", label: "Tarifa", render: (v) => v > 0 ? formatCurrency(v) : "-" },
+            ]);
+        } else if (tesourariaTab === "contratos-financeiros") {
+            const items = await api.list(ENDPOINTS.contratosFinanceiros, { page_size: 100 });
+            rt(container, normalizeList(items), [
+                { key: "tipo", label: "Tipo", render: (v) => badge(v, "info") },
+                { key: "descricao", label: "Descricao" },
+                { key: "credor", label: "Credor" },
+                { key: "valor_principal", label: "Principal", render: (v) => formatCurrency(v) },
+                { key: "total_parcelas", label: "Parcelas" },
+                { key: "taxa_juros_mensal", label: "Taxa a.m.", render: (v) => `${v}%` },
+                { key: "status", label: "Status", render: (v) => badge(v, v === "ativo" ? "good" : v === "quitado" ? "muted" : "danger") },
+            ]);
+        } else if (tesourariaTab === "aplicacoes") {
+            const items = await api.list(ENDPOINTS.aplicacoesFinanceiras, { page_size: 100 });
+            rt(container, normalizeList(items), [
+                { key: "tipo", label: "Tipo", render: (v) => badge(v, "info") },
+                { key: "banco", label: "Banco" },
+                { key: "descricao", label: "Descricao" },
+                { key: "valor_aplicado", label: "Aplicado", render: (v) => formatCurrency(v) },
+                { key: "saldo_atual", label: "Saldo atual", render: (v) => formatCurrency(v) },
+                { key: "rendimento_percentual", label: "Rendimento a.a.", render: (v) => `${v}%` },
+                { key: "status", label: "Status", render: (v) => badge(v, v === "ativa" ? "good" : v === "resgatada" ? "muted" : "warn") },
+            ]);
+        }
+    } catch (error) {
+        container.innerHTML = `<p class="muted">Erro ao carregar: ${escapeHtml(error.message)}</p>`;
+    }
+}
+
+function openTransferenciaModal() {
+    const contas = state.data.contasBancarias || [];
+    openModal({
+        title: "Nova Transferencia Interna",
+        body: `
+        <form id="transferencia-form" class="modal-form">
+            <div class="form-grid">
+                <label>Conta origem <select name="conta_origem" required><option value="">Selecione</option>${optionsFor(contas, (c) => `${c.banco} - ${c.numero}`)}</select></label>
+                <label>Conta destino <select name="conta_destino" required><option value="">Selecione</option>${optionsFor(contas, (c) => `${c.banco} - ${c.numero}`)}</select></label>
+                <label>Data <input type="date" name="data_transferencia" required value="${new Date().toISOString().slice(0,10)}"></label>
+                <label>Valor <input type="number" name="valor" step="0.01" min="0.01" required></label>
+                <label>Tarifa <input type="number" name="tarifa" step="0.01" min="0" value="0"></label>
+                <label class="span-2">Descricao <input type="text" name="descricao" required></label>
+            </div>
+            <button class="btn btn-primary btn-wide" type="submit">Confirmar transferencia</button>
+        </form>`,
+    });
+    $("#transferencia-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = e.currentTarget.querySelector("button");
+        setBusy(btn, true);
+        try {
+            await api.create(ENDPOINTS.transferenciasInternas, serializeForm(e.currentTarget));
+            toast("Transferencia registrada.", "good");
+            closeModal();
+            renderTesourariaTab();
+        } catch (err) {
+            toast(err.message || "Erro.", "danger");
+        } finally {
+            setBusy(btn, false);
+        }
+    });
+}
+
+// ─── RECORRENCIAS ────────────────────────────────────────────────────────────
+
+async function renderRecorrencias() {
+    const container = $("#recorrencias-table");
+    if (!container) return;
+    try {
+        const items = await api.list(ENDPOINTS.recorrencias, { page_size: 100 });
+        rt(container, normalizeList(items), [
+            { key: "tipo", label: "Tipo", render: (v) => badge(v, v === "receber" ? "good" : "warn") },
+            { key: "descricao", label: "Descricao" },
+            { key: "valor", label: "Valor", render: (v) => formatCurrency(v) },
+            { key: "periodicidade", label: "Periodicidade", render: (v) => badge(v, "info") },
+            { key: "data_inicio", label: "Inicio", render: (v) => formatDate(v) },
+            { key: "data_fim", label: "Fim", render: (v) => v ? formatDate(v) : "Indeterminado" },
+            { key: "status", label: "Status", render: (v) => badge(v, v === "ativa" ? "good" : v === "pausada" ? "warn" : "danger") },
+            { key: "total_gerado", label: "Gerados" },
+        ]);
+    } catch (error) {
+        container.innerHTML = `<p class="muted">Erro: ${escapeHtml(error.message)}</p>`;
+    }
+
+    const newBtn = $("#new-recorrencia");
+    if (newBtn && !newBtn._bound) {
+        newBtn._bound = true;
+        newBtn.addEventListener("click", () => openRecorrenciaModal());
+    }
+}
+
+function openRecorrenciaModal() {
+    const clientes = state.data.clientes || [];
+    const fornecedores = state.data.fornecedores || [];
+    const planoContas = state.data.planoContas || [];
+    openModal({
+        title: "Nova Recorrencia",
+        body: `
+        <form id="recorrencia-form" class="modal-form">
+            <div class="form-grid">
+                <label>Tipo <select name="tipo" required><option value="pagar">A pagar</option><option value="receber">A receber</option></select></label>
+                <label>Periodicidade <select name="periodicidade" required>
+                    <option value="mensal">Mensal</option><option value="semanal">Semanal</option>
+                    <option value="diaria">Diaria</option><option value="trimestral">Trimestral</option>
+                    <option value="semestral">Semestral</option><option value="anual">Anual</option>
+                </select></label>
+                <label class="span-2">Descricao <input type="text" name="descricao" required></label>
+                <label>Valor <input type="number" name="valor" step="0.01" min="0.01" required></label>
+                <label>Dia de vencimento <input type="number" name="dia_vencimento" min="1" max="31" value="1"></label>
+                <label>Data inicio <input type="date" name="data_inicio" required value="${new Date().toISOString().slice(0,10)}"></label>
+                <label>Data fim <input type="date" name="data_fim"></label>
+                <label>Fornecedor <select name="fornecedor"><option value="">Nenhum</option>${optionsFor(fornecedores, "nome")}</select></label>
+                <label>Cliente <select name="cliente"><option value="">Nenhum</option>${optionsFor(clientes, "nome")}</select></label>
+                <label>Plano de conta <select name="plano_conta"><option value="">Nenhum</option>${optionsFor(planoContas, "nome")}</select></label>
+            </div>
+            <button class="btn btn-primary btn-wide" type="submit">Salvar recorrencia</button>
+        </form>`,
+    });
+    $("#recorrencia-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = e.currentTarget.querySelector("button");
+        setBusy(btn, true);
+        try {
+            await api.create(ENDPOINTS.recorrencias, serializeForm(e.currentTarget));
+            toast("Recorrencia criada.", "good");
+            closeModal();
+            renderRecorrencias();
+        } catch (err) {
+            toast(err.message || "Erro.", "danger");
+        } finally {
+            setBusy(btn, false);
+        }
+    });
+}
+
+// ─── COBRANCAS ───────────────────────────────────────────────────────────────
+
+let cobrancasTab = "cobrancas-lista";
+
+async function renderCobrancas() {
+    bindTabGroup("#cobrancas-view", (tab) => {
+        cobrancasTab = tab;
+        renderCobrancasTab();
+    });
+    renderCobrancasTab();
+}
+
+async function renderCobrancasTab() {
+    const container = $("#cobrancas-content");
+    if (!container) return;
+    container.innerHTML = '<p class="muted">Carregando...</p>';
+    try {
+        if (cobrancasTab === "cobrancas-lista") {
+            const items = await api.list(ENDPOINTS.cobrancas, { page_size: 100 });
+            rt(container, normalizeList(items), [
+                { key: "tipo", label: "Tipo", render: (v) => badge(v, "info") },
+                { key: "data_vencimento", label: "Vencimento", render: (v) => formatDate(v) },
+                { key: "valor", label: "Valor", render: (v) => formatCurrency(v) },
+                { key: "status", label: "Status", render: (v) => badge(v, v === "pago" ? "good" : v === "cancelado" ? "danger" : "warn") },
+                { key: "nosso_numero", label: "Nosso numero" },
+            ]);
+        } else if (cobrancasTab === "regras-cobranca") {
+            const items = await api.list("/api/financeiro/regras-cobranca/", { page_size: 50 });
+            rt(container, normalizeList(items), [
+                { key: "nome", label: "Nome" },
+                { key: "gatilho", label: "Gatilho", render: (v) => badge(v, "info") },
+                { key: "dias_offset", label: "Dias" },
+                { key: "canal", label: "Canal" },
+                { key: "ativo", label: "Ativo", render: (v) => v ? badge("Sim", "good") : badge("Nao", "muted") },
+            ]);
+        }
+    } catch (error) {
+        container.innerHTML = `<p class="muted">Erro: ${escapeHtml(error.message)}</p>`;
+    }
+}
+
+// ─── IMPORTACAO OFX ──────────────────────────────────────────────────────────
+
+async function renderImportacaoOFX() {
+    const contaSelect = $("#ofx-conta-bancaria");
+    if (contaSelect && !contaSelect._populated) {
+        contaSelect._populated = true;
+        const contas = state.data.contasBancarias || [];
+        contaSelect.innerHTML = '<option value="">Selecione a conta</option>' + optionsFor(contas, (c) => `${c.banco} - ${c.numero}`);
+    }
+
+    const historyTable = $("#ofx-history-table");
+    if (historyTable) {
+        try {
+            const items = await api.list(ENDPOINTS.importacoesOFX, { page_size: 50 });
+            renderTable(historyTable, normalizeList(items), [
+                { key: "nome_arquivo", label: "Arquivo" },
+                { key: "status", label: "Status", render: (v) => badge(v, v === "processado" ? "good" : v === "erro" ? "danger" : "warn") },
+                { key: "total_lancamentos", label: "Total" },
+                { key: "lancamentos_importados", label: "Importados" },
+                { key: "lancamentos_duplicados", label: "Duplicados" },
+                { key: "criado_em", label: "Data", render: (v) => formatDate(v) },
+            ]);
+        } catch (e) {
+            historyTable.innerHTML = '<p class="muted">Nenhuma importacao registrada.</p>';
+        }
+    }
+
+    const form = $("#ofx-upload-form");
+    if (form && !form._bound) {
+        form._bound = true;
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const btn = form.querySelector("button");
+            setBusy(btn, true);
+            try {
+                const formData = new FormData();
+                formData.append("conta_bancaria", $("#ofx-conta-bancaria").value);
+                formData.append("arquivo", $("#ofx-file").files[0]);
+                formData.append("nome_arquivo", $("#ofx-file").files[0].name);
+                await api.request(ENDPOINTS.importacoesOFX, { method: "POST", body: formData });
+                toast("OFX importado. Verifique as conciliacoes pendentes.", "good");
+                renderImportacaoOFX();
+            } catch (err) {
+                toast(err.message || "Erro na importacao.", "danger");
+            } finally {
+                setBusy(btn, false);
+            }
+        });
+    }
+}
+
+// ─── FECHAMENTO FINANCEIRO ───────────────────────────────────────────────────
+
+async function renderFechamento() {
+    const container = $("#fechamento-grid");
+    if (!container) return;
+
+    const anoSelect = $("#fechamento-ano");
+    const ano = anoSelect ? parseInt(anoSelect.value, 10) : new Date().getFullYear();
+
+    container.innerHTML = '<p class="muted">Carregando...</p>';
+    try {
+        const items = await api.list(ENDPOINTS.periodosFechamento, { page_size: 60, ano });
+        const periodos = normalizeList(items);
+        const meses = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+        const rows = meses.map((mes, idx) => {
+            const mesNum = idx + 1;
+            const periodo = periodos.find((p) => p.ano === ano && p.mes === mesNum);
+            const status = periodo?.status || "aberto";
+            const tone = status === "fechado" ? "danger" : status === "reaberto" ? "warn" : "good";
+            return `<div class="periodo-cell">
+                <span class="periodo-mes">${mes} ${ano}</span>
+                ${badge(status, tone)}
+                ${status !== "fechado"
+                    ? `<button class="btn btn-sm btn-danger" onclick="fecharPeriodo(${periodo?.id || 0}, ${ano}, ${mesNum})">Fechar</button>`
+                    : `<button class="btn btn-sm btn-secondary" onclick="reabrirPeriodo(${periodo?.id})">Reabrir</button>`
+                }
+            </div>`;
+        }).join("");
+        container.innerHTML = `<div class="periodo-grid-inner">${rows}</div>`;
+    } catch (error) {
+        container.innerHTML = `<p class="muted">Erro: ${escapeHtml(error.message)}</p>`;
+    }
+
+    if (anoSelect && !anoSelect._bound) {
+        anoSelect._bound = true;
+        anoSelect.addEventListener("change", renderFechamento);
+    }
+}
+
+window.fecharPeriodo = async function(periodoId, ano, mes) {
+    try {
+        if (periodoId) {
+            await api.post(`${ENDPOINTS.periodosFechamento}${periodoId}/fechar/`, {});
+        } else {
+            await api.create(ENDPOINTS.periodosFechamento, { ano, mes, status: "fechado" });
+        }
+        toast(`Periodo ${mes}/${ano} fechado.`, "good");
+        renderFechamento();
+    } catch (err) {
+        toast(err.message || "Erro ao fechar periodo.", "danger");
+    }
+};
+
+window.reabrirPeriodo = async function(periodoId) {
+    openModal({
+        title: "Reabrir periodo",
+        body: `
+        <form id="reabrir-form" class="modal-form">
+            <label>Justificativa obrigatoria <textarea name="justificativa" required rows="3"></textarea></label>
+            <button class="btn btn-primary btn-wide" type="submit">Reabrir</button>
+        </form>`,
+    });
+    $("#reabrir-form").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const btn = e.currentTarget.querySelector("button");
+        setBusy(btn, true);
+        try {
+            await api.post(`${ENDPOINTS.periodosFechamento}${periodoId}/reabrir/`, serializeForm(e.currentTarget));
+            toast("Periodo reaberto.", "warn");
+            closeModal();
+            renderFechamento();
+        } catch (err) {
+            toast(err.message || "Erro.", "danger");
+        } finally {
+            setBusy(btn, false);
+        }
+    });
+};
+
+// ─── PERMISSOES ──────────────────────────────────────────────────────────────
+
+let selectedPerfilId = null;
+let allPermissoes = [];
+
+async function renderPermissoes() {
+    const perfisContainer = $("#perfis-list");
+    const permissoesContainer = $("#permissoes-grid");
+    if (!perfisContainer) return;
+
+    try {
+        const [perfis, permissoes] = await Promise.all([
+            api.list("/api/core/perfis/", { page_size: 100 }),
+            api.list("/api/core/permissoes/", { page_size: 500 }),
+        ]);
+        allPermissoes = normalizeList(permissoes);
+
+        const perfisList = normalizeList(perfis);
+        perfisContainer.innerHTML = renderTable({
+            columns: [
+                { key: "nome", label: "Perfil" },
+                { key: "sistema", label: "Sistema", render: (v) => v ? badge("Sim", "info") : "" },
+            ],
+            rows: perfisList,
+        });
+        perfisContainer.querySelectorAll("tbody tr").forEach((tr, idx) => {
+            tr.style.cursor = "pointer";
+            tr.addEventListener("click", () => {
+                selectedPerfilId = perfisList[idx].id;
+                renderPermissoesGrid(perfisList[idx]);
+            });
+        });
+    } catch (error) {
+        perfisContainer.innerHTML = `<p class="muted">Erro: ${escapeHtml(error.message)}</p>`;
+    }
+
+    const newBtn = $("#new-perfil");
+    if (newBtn && !newBtn._bound) {
+        newBtn._bound = true;
+        newBtn.addEventListener("click", () => {
+            openModal({
+                title: "Novo Perfil",
+                body: `
+                <form id="perfil-form" class="modal-form">
+                    <label>Nome <input type="text" name="nome" required></label>
+                    <label>Descricao <textarea name="descricao"></textarea></label>
+                    <button class="btn btn-primary btn-wide" type="submit">Criar perfil</button>
+                </form>`,
+            });
+            $("#perfil-form").addEventListener("submit", async (e) => {
+                e.preventDefault();
+                const btn = e.currentTarget.querySelector("button");
+                setBusy(btn, true);
+                try {
+                    await api.create("/api/core/perfis/", serializeForm(e.currentTarget));
+                    toast("Perfil criado.", "good");
+                    closeModal();
+                    renderPermissoes();
+                } catch (err) {
+                    toast(err.message || "Erro.", "danger");
+                } finally {
+                    setBusy(btn, false);
+                }
+            });
+        });
+    }
+
+    const saveBtn = $("#save-permissoes");
+    if (saveBtn && !saveBtn._bound) {
+        saveBtn._bound = true;
+        saveBtn.addEventListener("click", savePermissoes);
+    }
+}
+
+async function renderPermissoesGrid(perfil) {
+    const container = $("#permissoes-grid");
+    if (!container) return;
+
+    try {
+        const perfilPerms = await api.list("/api/core/perfil-permissoes/", { perfil: perfil.id, page_size: 500 });
+        const perfilPermIds = new Set(normalizeList(perfilPerms).map((pp) => pp.permissao));
+
+        const byModulo = allPermissoes.reduce((acc, perm) => {
+            const mod = perm.modulo || "Geral";
+            if (!acc[mod]) acc[mod] = [];
+            acc[mod].push(perm);
+            return acc;
+        }, {});
+
+        container.innerHTML = `<p class="eyebrow" style="margin-bottom:8px">Perfil: ${escapeHtml(perfil.nome)}</p>` +
+            Object.entries(byModulo).map(([modulo, perms]) => `
+                <div class="perm-group">
+                    <strong>${escapeHtml(String(modulo))}</strong>
+                    <div class="perm-checks">
+                        ${perms.map((p) => `
+                            <label class="perm-label">
+                                <input type="checkbox" data-perm-id="${p.id}" ${perfilPermIds.has(p.id) ? "checked" : ""}>
+                                <span>${escapeHtml(p.codigo)}</span>
+                                ${p.sensivel ? badge("sensivel", "danger") : ""}
+                            </label>`).join("")}
+                    </div>
+                </div>`).join("");
+    } catch (error) {
+        container.innerHTML = `<p class="muted">Erro: ${escapeHtml(error.message)}</p>`;
+    }
+}
+
+async function savePermissoes() {
+    if (!selectedPerfilId) {
+        toast("Selecione um perfil primeiro.", "warn");
+        return;
+    }
+    const checked = [...$$("#permissoes-grid input[data-perm-id]:checked")].map((cb) => parseInt(cb.dataset.permId, 10));
+    const unchecked = [...$$("#permissoes-grid input[data-perm-id]:not(:checked)")].map((cb) => parseInt(cb.dataset.permId, 10));
+
+    const btn = $("#save-permissoes");
+    setBusy(btn, true);
+    try {
+        await Promise.all([
+            ...checked.map((permId) =>
+                api.create("/api/core/perfil-permissoes/", { perfil: selectedPerfilId, permissao: permId }).catch(() => {})
+            ),
+            ...unchecked.map(async (permId) => {
+                const pp = await api.list("/api/core/perfil-permissoes/", { perfil: selectedPerfilId, permissao: permId, page_size: 1 });
+                const item = normalizeList(pp)[0];
+                if (item) await api.delete(`/api/core/perfil-permissoes/${item.id}/`).catch(() => {});
+            }),
+        ]);
+        toast("Permissoes salvas.", "good");
+    } catch (error) {
+        toast(error.message || "Erro ao salvar permissoes.", "danger");
+    } finally {
+        setBusy(btn, false);
+    }
+}
+

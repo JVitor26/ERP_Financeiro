@@ -346,3 +346,48 @@ class Notificacao(TimeStampedModel):
 
     def __str__(self):
         return self.titulo
+
+
+# ---------------------------------------------------------------------------
+# MFA TOTP
+# ---------------------------------------------------------------------------
+class MFASecret(TimeStampedModel):
+    """Armazena o secret TOTP e backup codes do usuário para MFA."""
+
+    usuario = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="mfa_secret",
+    )
+    secret = models.CharField(max_length=64)
+    backup_codes = models.JSONField(default=list)
+    ativado_em = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "MFA Secret"
+        verbose_name_plural = "MFA Secrets"
+
+    def __str__(self):
+        return f"MFASecret({self.usuario})"
+
+
+# ---------------------------------------------------------------------------
+# Histórico de Senhas — política de não reutilização
+# ---------------------------------------------------------------------------
+class HistoricoSenha(TimeStampedModel):
+    """Guarda as últimas 5 senhas (hash) de cada usuário para impedir reutilização."""
+
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="historico_senhas",
+    )
+    hash_senha = models.CharField(max_length=255)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        verbose_name = "Historico de Senha"
+        verbose_name_plural = "Historico de Senhas"
+
+    def __str__(self):
+        return f"HistoricoSenha({self.usuario}, {self.criado_em:%Y-%m-%d})"

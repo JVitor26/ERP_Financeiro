@@ -25,6 +25,27 @@ export const ENDPOINTS = {
     alertas: "/api/inteligencia/alertas/",
     anomalias: "/api/inteligencia/anomalias/",
     previsoes: "/api/inteligencia/previsoes/",
+    // Contábil
+    contasContabeis: "/api/contabil/contas-contabeis/",
+    competenciasContabeis: "/api/contabil/competencias/",
+    lancamentosContabeis: "/api/contabil/lancamentos/",
+    relatoriosContabeis: "/api/contabil/relatorios/",
+    // Fiscal
+    configuracaoFiscal: "/api/fiscal/configuracao-fiscal/",
+    notasFiscais: "/api/fiscal/notas-fiscais/",
+    impostosApurados: "/api/fiscal/impostos-apurados/",
+    obrigacoesFiscais: "/api/fiscal/obrigacoes-fiscais/",
+    relatoriosFiscais: "/api/fiscal/relatorios/",
+    // Financeiro avançado
+    recorrencias: "/api/financeiro/recorrencias/",
+    periodosFechamento: "/api/financeiro/periodos-fechamento/",
+    alcadasAprovacao: "/api/financeiro/alcadas-aprovacao/",
+    importacoesOFX: "/api/financeiro/importacoes-ofx/",
+    cobrancas: "/api/financeiro/cobrancas/",
+    regrasconciliacao: "/api/financeiro/regras-conciliacao/",
+    transferenciasInternas: "/api/financeiro/transferencias-internas/",
+    contratosFinanceiros: "/api/financeiro/contratos-financeiros/",
+    aplicacoesFinanceiras: "/api/financeiro/aplicacoes-financeiras/",
 };
 
 export const STATUS_LABELS = {

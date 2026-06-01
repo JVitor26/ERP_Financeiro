@@ -6,6 +6,14 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
 
 from core.auth_views import ERPTokenObtainPairView, MeView
+from core.views_mfa import (
+    MFASetupView,
+    MFAAtivarView,
+    MFAVerificarView,
+    MFADesativarView,
+    MFABackupCodesView,
+    MFARegenerarBackupCodesView,
+)
 
 
 def home(request):
@@ -27,7 +35,15 @@ urlpatterns = [
     path("api/auth/me/", MeView.as_view(), name="auth_me"),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path("api/auth/mfa/setup/", MFASetupView.as_view(), name="mfa_setup"),
+    path("api/auth/mfa/ativar/", MFAAtivarView.as_view(), name="mfa_ativar"),
+    path("api/auth/mfa/verificar/", MFAVerificarView.as_view(), name="mfa_verificar"),
+    path("api/auth/mfa/desativar/", MFADesativarView.as_view(), name="mfa_desativar"),
+    path("api/auth/mfa/backup-codes/", MFABackupCodesView.as_view(), name="mfa_backup_codes"),
+    path("api/auth/mfa/regenerar-backup-codes/", MFARegenerarBackupCodesView.as_view(), name="mfa_regenerar"),
     path("api/core/", include("core.urls")),
     path("api/financeiro/", include("financeiro.urls")),
     path("api/inteligencia/", include("inteligencia.urls")),
+    path("api/contabil/", include("contabil.urls")),
+    path("api/fiscal/", include("fiscal.urls")),
 ]

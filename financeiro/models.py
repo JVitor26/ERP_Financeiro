@@ -525,3 +525,510 @@ class AnexoFinanceiro(TimeStampedModel):
 
     def __str__(self):
         return self.nome_original
+
+
+# ---------------------------------------------------------------------------
+# Fase 2 — Financeiro Avancado
+# ---------------------------------------------------------------------------
+
+class PeriodicidadeChoices(models.TextChoices):
+    DIARIA = "diaria", "Diaria"
+    SEMANAL = "semanal", "Semanal"
+    MENSAL = "mensal", "Mensal"
+    TRIMESTRAL = "trimestral", "Trimestral"
+    SEMESTRAL = "semestral", "Semestral"
+    ANUAL = "anual", "Anual"
+
+
+class StatusRecorrencia(models.TextChoices):
+    ATIVA = "ativa", "Ativa"
+    PAUSADA = "pausada", "Pausada"
+    CANCELADA = "cancelada", "Cancelada"
+    ENCERRADA = "encerrada", "Encerrada"
+
+
+class RecorrenciaFinanceira(TimeStampedModel):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="recorrencias_financeiras")
+    tipo = models.CharField(max_length=20, choices=[("pagar", "Pagar"), ("receber", "Receber")])
+    descricao = models.CharField(max_length=180)
+    valor = models.DecimalField(max_digits=14, decimal_places=2)
+    periodicidade = models.CharField(max_length=20, choices=PeriodicidadeChoices.choices)
+    data_inicio = models.DateField()
+    data_fim = models.DateField(null=True, blank=True)
+    dia_vencimento = models.PositiveSmallIntegerField(
+        help_text="Dia do mes para cobrancas mensais e superiores (1-31)."
+    )
+    plano_conta = models.ForeignKey(PlanoConta, on_delete=models.PROTECT, null=True, blank=True, related_name="recorrencias")
+    centro_custo = models.ForeignKey(CentroCusto, on_delete=models.PROTECT, null=True, blank=True, related_name="recorrencias")
+    conta_bancaria = models.ForeignKey(ContaBancaria, on_delete=models.PROTECT, null=True, blank=True, related_name="recorrencias")
+    fornecedor = models.ForeignKey(Fornecedor, on_delete=models.PROTECT, null=True, blank=True, related_name="recorrencias")
+    cliente = models.ForeignKey(Cliente, on_delete=models.PROTECT, null=True, blank=True, related_name="recorrencias")
+    status = models.CharField(max_length=20, choices=StatusRecorrencia.choices, default=StatusRecorrencia.ATIVA)
+    total_gerado = models.PositiveIntegerField(default=0)
+    ultima_geracao = models.DateField(null=True, blank=True)
+    responsavel = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="recorrencias_financeiras",
+    )
+    observacao = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+        indexes = [models.Index(fields=["empresa", "status", "tipo"])]
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.descricao}"
+
+    def proxima_data_vencimento(self):
+        from datetime import date
+        import calendar
+
+        referencia = self.ultima_geracao or self.data_inicio
+        if self.periodicidade == PeriodicidadeChoices.DIARIA:
+            from datetime import timedelta
+            return referencia + timedelta(days=1)
+        if self.periodicidade == PeriodicidadeChoices.SEMANAL:
+            from datetime import timedelta
+            return referencia + timedelta(weeks=1)
+        if self.periodicidade == PeriodicidadeChoices.MENSAL:
+            mes = referencia.month + 1
+            ano = referencia.year + (mes - 1) // 12
+            mes = ((mes - 1) % 12) + 1
+            dia = min(self.dia_vencimento, calendar.monthrange(ano, mes)[1])
+            return date(ano, mes, dia)
+        if self.periodicidade == PeriodicidadeChoices.TRIMESTRAL:
+            mes = referencia.month + 3
+            ano = referencia.year + (mes - 1) // 12
+            mes = ((mes - 1) % 12) + 1
+            dia = min(self.dia_vencimento, calendar.monthrange(ano, mes)[1])
+            return date(ano, mes, dia)
+        if self.periodicidade == PeriodicidadeChoices.SEMESTRAL:
+            mes = referencia.month + 6
+            ano = referencia.year + (mes - 1) // 12
+            mes = ((mes - 1) % 12) + 1
+            dia = min(self.dia_vencimento, calendar.monthrange(ano, mes)[1])
+            return date(ano, mes, dia)
+        if self.periodicidade == PeriodicidadeChoices.ANUAL:
+            ano = referencia.year + 1
+            dia = min(self.dia_vencimento, calendar.monthrange(ano, referencia.month)[1])
+            return date(ano, referencia.month, dia)
+        return referencia
+
+
+class PeriodoFechamento(TimeStampedModel):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="periodos_fechamento")
+    ano = models.PositiveSmallIntegerField()
+    mes = models.PositiveSmallIntegerField()
+    status = models.CharField(
+        max_length=20,
+        choices=[("aberto", "Aberto"), ("fechado", "Fechado"), ("reaberto", "Reaberto")],
+        default="aberto",
+    )
+    fechado_em = models.DateTimeField(null=True, blank=True)
+    fechado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="periodos_fechados",
+    )
+    reaberto_em = models.DateTimeField(null=True, blank=True)
+    reaberto_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="periodos_reabertos",
+    )
+    justificativa = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-ano", "-mes"]
+        constraints = [
+            models.UniqueConstraint(fields=["empresa", "ano", "mes"], name="uniq_periodo_fechamento_empresa_ano_mes")
+        ]
+
+    def __str__(self):
+        return f"{self.mes:02d}/{self.ano} - {self.status}"
+
+    def esta_fechado(self):
+        return self.status == "fechado"
+
+
+class RateioLancamento(TimeStampedModel):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="rateios_lancamento")
+    origem_modelo = models.CharField(max_length=120, help_text="Ex: financeiro.ContaPagar")
+    origem_id = models.CharField(max_length=80)
+    centro_custo = models.ForeignKey(CentroCusto, on_delete=models.PROTECT, null=True, blank=True, related_name="rateios")
+    plano_conta = models.ForeignKey(PlanoConta, on_delete=models.PROTECT, null=True, blank=True, related_name="rateios")
+    percentual = models.DecimalField(max_digits=5, decimal_places=2, help_text="Percentual do rateio (0.00-100.00)")
+    valor = models.DecimalField(max_digits=14, decimal_places=2, help_text="Valor calculado")
+    observacao = models.CharField(max_length=200, blank=True)
+
+    class Meta:
+        ordering = ["origem_modelo", "origem_id"]
+        indexes = [models.Index(fields=["empresa", "origem_modelo", "origem_id"])]
+
+    def __str__(self):
+        return f"{self.origem_modelo}#{self.origem_id} - {self.percentual}%"
+
+    @classmethod
+    def total_percentual_da_origem(cls, empresa, origem_modelo, origem_id):
+        from django.db.models import Sum
+        resultado = cls.objects.filter(
+            empresa=empresa, origem_modelo=origem_modelo, origem_id=origem_id
+        ).aggregate(total=Sum("percentual"))
+        return resultado["total"] or Decimal("0.00")
+
+
+class AlcadaAprovacao(TimeStampedModel):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="alcadas_aprovacao")
+    nome = models.CharField(max_length=120)
+    valor_minimo = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    valor_maximo = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True, help_text="null = sem limite")
+    centro_custo = models.ForeignKey(CentroCusto, on_delete=models.PROTECT, null=True, blank=True, related_name="alcadas")
+    plano_conta = models.ForeignKey(PlanoConta, on_delete=models.PROTECT, null=True, blank=True, related_name="alcadas")
+    fornecedor = models.ForeignKey(Fornecedor, on_delete=models.PROTECT, null=True, blank=True, related_name="alcadas")
+    tipo_aprovacao = models.CharField(
+        max_length=20,
+        choices=[("sequencial", "Sequencial"), ("paralela", "Paralela")],
+        default="sequencial",
+    )
+    prazo_aprovacao_horas = models.PositiveIntegerField(default=48)
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["nome"]
+
+    def __str__(self):
+        return self.nome
+
+
+class AlcadaAprovador(TimeStampedModel):
+    alcada = models.ForeignKey(AlcadaAprovacao, on_delete=models.CASCADE, related_name="aprovadores")
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="alcadas_aprovador")
+    ordem = models.PositiveSmallIntegerField(default=1, help_text="Ordem para aprovacao sequencial")
+
+    class Meta:
+        ordering = ["alcada", "ordem"]
+        constraints = [
+            models.UniqueConstraint(fields=["alcada", "usuario"], name="uniq_alcada_aprovador_alcada_usuario")
+        ]
+
+    def __str__(self):
+        return f"{self.alcada} - {self.usuario} (ordem {self.ordem})"
+
+
+# ---------------------------------------------------------------------------
+# Fase 3 — Integracao Bancaria
+# ---------------------------------------------------------------------------
+
+class CredencialBancaria(TimeStampedModel):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="credenciais_bancarias")
+    banco = models.CharField(max_length=80)
+    descricao = models.CharField(max_length=120)
+    tipo_integracao = models.CharField(
+        max_length=20,
+        choices=[("api", "API"), ("ofx", "OFX"), ("remessa", "Remessa")],
+    )
+    client_id = models.CharField(max_length=200, blank=True)
+    client_secret = models.CharField(max_length=200, blank=True)
+    certificado = models.FileField(upload_to="fiscal/certificados/", null=True, blank=True, help_text="Certificado digital")
+    conta_bancaria = models.ForeignKey(ContaBancaria, on_delete=models.PROTECT, related_name="credenciais")
+    ativa = models.BooleanField(default=True)
+    configuracoes = models.JSONField(default=dict, blank=True)
+    metadados = models.JSONField(default=dict, blank=True, help_text="Logs, ultimo sync, etc.")
+
+    class Meta:
+        ordering = ["banco", "descricao"]
+
+    def __str__(self):
+        return f"{self.banco} - {self.descricao}"
+
+
+class ImportacaoOFX(TimeStampedModel):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="importacoes_ofx")
+    conta_bancaria = models.ForeignKey(ContaBancaria, on_delete=models.PROTECT, related_name="importacoes_ofx")
+    arquivo = models.FileField(upload_to="ofx/")
+    nome_arquivo = models.CharField(max_length=180)
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ("pendente", "Pendente"),
+            ("processando", "Processando"),
+            ("processado", "Processado"),
+            ("erro", "Erro"),
+        ],
+        default="pendente",
+    )
+    total_lancamentos = models.PositiveIntegerField(default=0)
+    lancamentos_importados = models.PositiveIntegerField(default=0)
+    lancamentos_duplicados = models.PositiveIntegerField(default=0)
+    data_inicio_extrato = models.DateField(null=True, blank=True)
+    data_fim_extrato = models.DateField(null=True, blank=True)
+    erro = models.TextField(blank=True)
+    importado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="importacoes_ofx",
+    )
+
+    class Meta:
+        ordering = ["-criado_em"]
+
+    def __str__(self):
+        return f"{self.nome_arquivo} - {self.status}"
+
+
+class RegraConciliacao(TimeStampedModel):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="regras_conciliacao")
+    nome = models.CharField(max_length=120)
+    campo_comparacao = models.CharField(
+        max_length=20,
+        choices=[("valor", "Valor"), ("data", "Data"), ("documento", "Documento"), ("historico", "Historico")],
+    )
+    operador = models.CharField(
+        max_length=20,
+        choices=[("igual", "Igual"), ("contem", "Contem"), ("comeca_com", "Comeca com"), ("regex", "Regex")],
+    )
+    valor_referencia = models.CharField(max_length=200)
+    peso = models.PositiveSmallIntegerField(default=1, help_text="Peso no score de similaridade")
+    ativa = models.BooleanField(default=True)
+    auto_conciliar_acima = models.DecimalField(
+        max_digits=5, decimal_places=2, null=True, blank=True,
+        help_text="Percentual minimo de score para auto-conciliar"
+    )
+
+    class Meta:
+        ordering = ["nome"]
+
+    def __str__(self):
+        return self.nome
+
+
+class CobrancaFinanceira(TimeStampedModel):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="cobrancas_financeiras")
+    conta_receber = models.ForeignKey(ContaReceber, on_delete=models.CASCADE, related_name="cobrancas")
+    tipo = models.CharField(max_length=20, choices=[("boleto", "Boleto"), ("pix", "PIX")])
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ("criado", "Criado"),
+            ("registrado", "Registrado"),
+            ("aguardando", "Aguardando"),
+            ("pago", "Pago"),
+            ("vencido", "Vencido"),
+            ("cancelado", "Cancelado"),
+        ],
+        default="criado",
+    )
+    nosso_numero = models.CharField(max_length=40, blank=True)
+    linha_digitavel = models.TextField(blank=True)
+    codigo_pix = models.TextField(blank=True, help_text="EMV PIX")
+    qrcode_base64 = models.TextField(blank=True)
+    data_vencimento = models.DateField()
+    valor = models.DecimalField(max_digits=14, decimal_places=2)
+    data_pagamento = models.DateField(null=True, blank=True)
+    valor_pago = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    url_boleto = models.CharField(max_length=500, blank=True)
+    metadados = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ["-criado_em"]
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.conta_receber} - {self.status}"
+
+
+class RegraCobrancanAutomatica(models.TextChoices):
+    ANTES_VENCIMENTO = "antes_vencimento", "Antes do vencimento"
+    NO_VENCIMENTO = "no_vencimento", "No vencimento"
+    APOS_VENCIMENTO = "apos_vencimento", "Apos o vencimento"
+    COBRANCA_FINAL = "cobranca_final", "Cobranca final"
+
+
+class RegraCobrancan(TimeStampedModel):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="regras_cobranca")
+    nome = models.CharField(max_length=120)
+    gatilho = models.CharField(max_length=30, choices=RegraCobrancanAutomatica.choices)
+    dias_offset = models.IntegerField(default=0, help_text="Ex: -3 (3 dias antes), 0, +7 (7 dias depois)")
+    canal = models.CharField(
+        max_length=20,
+        choices=[("sistema", "Sistema"), ("email", "E-mail"), ("whatsapp", "WhatsApp"), ("sms", "SMS")],
+    )
+    modelo_mensagem = models.TextField()
+    ativo = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["nome"]
+
+    def __str__(self):
+        return self.nome
+
+
+class HistoricoCobranca(TimeStampedModel):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="historicos_cobranca")
+    conta_receber = models.ForeignKey(ContaReceber, on_delete=models.CASCADE, related_name="historico_cobranca")
+    canal = models.CharField(max_length=20)
+    mensagem_enviada = models.TextField()
+    status_envio = models.CharField(max_length=20, choices=[("enviado", "Enviado"), ("falhou", "Falhou")])
+    enviado_em = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-enviado_em"]
+
+    def __str__(self):
+        return f"{self.conta_receber} - {self.canal} - {self.status_envio}"
+
+
+# ---------------------------------------------------------------------------
+# Fase 4 — Tesouraria
+# ---------------------------------------------------------------------------
+
+class TransferenciaInterna(TimeStampedModel):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="transferencias_internas")
+    conta_origem = models.ForeignKey(ContaBancaria, on_delete=models.PROTECT, related_name="transferencias_saida")
+    conta_destino = models.ForeignKey(ContaBancaria, on_delete=models.PROTECT, related_name="transferencias_entrada")
+    data_transferencia = models.DateField()
+    valor = models.DecimalField(max_digits=14, decimal_places=2)
+    tarifa = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    descricao = models.CharField(max_length=200)
+    movimentacao_saida = models.ForeignKey(
+        MovimentacaoFinanceira,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transferencia_saida",
+    )
+    movimentacao_entrada = models.ForeignKey(
+        MovimentacaoFinanceira,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transferencia_entrada",
+    )
+    realizado_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="transferencias_realizadas",
+    )
+    comprovante = models.FileField(upload_to="transferencias/", null=True, blank=True)
+
+    class Meta:
+        ordering = ["-data_transferencia", "-criado_em"]
+
+    def __str__(self):
+        return f"{self.conta_origem} -> {self.conta_destino} R$ {self.valor}"
+
+
+class ContratoFinanceiro(TimeStampedModel):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="contratos_financeiros")
+    tipo = models.CharField(
+        max_length=20,
+        choices=[("emprestimo", "Emprestimo"), ("financiamento", "Financiamento"), ("leasing", "Leasing")],
+    )
+    descricao = models.CharField(max_length=200)
+    credor = models.CharField(max_length=120, help_text="Banco ou credor")
+    valor_principal = models.DecimalField(max_digits=14, decimal_places=2)
+    taxa_juros_mensal = models.DecimalField(max_digits=6, decimal_places=4, help_text="Ex: 1.5000 = 1.5% ao mes")
+    total_parcelas = models.PositiveIntegerField()
+    data_inicio = models.DateField()
+    data_fim = models.DateField()
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ("ativo", "Ativo"),
+            ("quitado", "Quitado"),
+            ("inadimplente", "Inadimplente"),
+            ("cancelado", "Cancelado"),
+        ],
+        default="ativo",
+    )
+    saldo_devedor = models.DecimalField(max_digits=14, decimal_places=2, help_text="Saldo calculado")
+    conta_bancaria = models.ForeignKey(ContaBancaria, on_delete=models.PROTECT, null=True, blank=True, related_name="contratos_financeiros")
+    plano_conta = models.ForeignKey(PlanoConta, on_delete=models.PROTECT, null=True, blank=True, related_name="contratos_financeiros")
+    observacao = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-data_inicio"]
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.descricao}"
+
+
+class ParcelaContratoFinanceiro(TimeStampedModel):
+    contrato = models.ForeignKey(ContratoFinanceiro, on_delete=models.CASCADE, related_name="parcelas")
+    numero_parcela = models.PositiveSmallIntegerField()
+    data_vencimento = models.DateField()
+    valor_principal = models.DecimalField(max_digits=14, decimal_places=2)
+    valor_juros = models.DecimalField(max_digits=14, decimal_places=2)
+    valor_total = models.DecimalField(max_digits=14, decimal_places=2)
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ("pendente", "Pendente"),
+            ("pago", "Pago"),
+            ("atrasado", "Atrasado"),
+            ("cancelado", "Cancelado"),
+        ],
+        default="pendente",
+    )
+    conta_pagar = models.ForeignKey(ContaPagar, on_delete=models.SET_NULL, null=True, blank=True, related_name="parcelas_contrato")
+    data_pagamento = models.DateField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["contrato", "numero_parcela"]
+
+    def __str__(self):
+        return f"{self.contrato} - Parcela {self.numero_parcela}"
+
+
+class AplicacaoFinanceira(TimeStampedModel):
+    empresa = models.ForeignKey(Empresa, on_delete=models.CASCADE, related_name="aplicacoes_financeiras")
+    banco = models.CharField(max_length=80)
+    descricao = models.CharField(max_length=120)
+    tipo = models.CharField(
+        max_length=20,
+        choices=[
+            ("cdb", "CDB"),
+            ("lci", "LCI"),
+            ("lca", "LCA"),
+            ("fundos", "Fundos"),
+            ("poupanca", "Poupanca"),
+            ("tesouro", "Tesouro Direto"),
+            ("outros", "Outros"),
+        ],
+    )
+    conta_bancaria = models.ForeignKey(ContaBancaria, on_delete=models.PROTECT, null=True, blank=True, related_name="aplicacoes_financeiras")
+    data_aplicacao = models.DateField()
+    valor_aplicado = models.DecimalField(max_digits=14, decimal_places=2)
+    rendimento_percentual = models.DecimalField(max_digits=6, decimal_places=4, default=Decimal("0.0000"), help_text="% ao ano")
+    data_vencimento = models.DateField(null=True, blank=True)
+    data_resgate = models.DateField(null=True, blank=True)
+    valor_resgatado = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    valor_imposto = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    saldo_atual = models.DecimalField(max_digits=14, decimal_places=2, help_text="Atualizado periodicamente")
+    status = models.CharField(
+        max_length=20,
+        choices=[
+            ("ativa", "Ativa"),
+            ("vencida", "Vencida"),
+            ("resgatada", "Resgatada"),
+            ("cancelada", "Cancelada"),
+        ],
+        default="ativa",
+    )
+    observacao = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-data_aplicacao"]
+
+    def __str__(self):
+        return f"{self.get_tipo_display()} - {self.banco} - {self.descricao}"

@@ -100,7 +100,7 @@ export function renderTable({ columns, rows, emptyTitle = "Sem registros", compa
                             <tr>
                                 ${columns
                                     .map((column) => {
-                                        const value = typeof column.render === "function" ? column.render(row) : row[column.key];
+                                        const value = typeof column.render === "function" ? column.render(row[column.key], row) : row[column.key];
                                         const align = column.align ? ` class="align-${column.align}"` : "";
                                         return `<td${align}>${value ?? ""}</td>`;
                                     })

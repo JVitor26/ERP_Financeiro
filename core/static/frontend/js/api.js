@@ -64,6 +64,14 @@ export class ApiClient {
         });
     }
 
+    async create(path, payload = {}) {
+        return this.post(path, payload);
+    }
+
+    async delete(path) {
+        return this.request(path, { method: "DELETE" });
+    }
+
     async download(path, payload = {}) {
         return this.request(path, {
             method: "POST",
