@@ -1,0 +1,355 @@
+{% load static %}
+<!doctype html>
+<html lang="pt-BR">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#151514">
+    <title>ERP Financeiro Inteligente</title>
+    <link rel="stylesheet" href="{% static 'frontend/css/app.css' %}">
+</head>
+<body>
+    <svg class="svg-sprite" aria-hidden="true">
+        <symbol id="i-activity" viewBox="0 0 24 24"><path d="M4 13h4l2-7 4 14 2-7h4"/></symbol>
+        <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3 2.8 20h18.4L12 3Z"/><path d="M12 9v5"/><path d="M12 17.6v.1"/></symbol>
+        <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+        <symbol id="i-bank" viewBox="0 0 24 24"><path d="M3 10h18L12 4 3 10Z"/><path d="M5 10v8"/><path d="M9 10v8"/><path d="M15 10v8"/><path d="M19 10v8"/><path d="M4 18h16"/></symbol>
+        <symbol id="i-brain" viewBox="0 0 24 24"><path d="M8.5 6.2A3.2 3.2 0 0 1 12 3a3.2 3.2 0 0 1 3.5 3.2"/><path d="M7 9a3 3 0 0 1 0 6"/><path d="M17 9a3 3 0 0 0 0 6"/><path d="M12 3v18"/><path d="M8 19a3 3 0 0 0 4 2 3 3 0 0 0 4-2"/><path d="M7 15a4 4 0 0 0 1 4"/><path d="M17 15a4 4 0 0 1-1 4"/></symbol>
+        <symbol id="i-building" viewBox="0 0 24 24"><path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><path d="M16 9h2a2 2 0 0 1 2 2v10"/><path d="M8 7h4"/><path d="M8 11h4"/><path d="M8 15h4"/><path d="M9 21v-3h2v3"/></symbol>
+        <symbol id="i-calendar" viewBox="0 0 24 24"><path d="M7 3v4"/><path d="M17 3v4"/><path d="M4 9h16"/><path d="M5 5h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z"/></symbol>
+        <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+        <symbol id="i-database" viewBox="0 0 24 24"><path d="M4 7c0-2 4-4 8-4s8 2 8 4-4 4-8 4-8-2-8-4Z"/><path d="M4 7v5c0 2 4 4 8 4s8-2 8-4V7"/><path d="M4 12v5c0 2 4 4 8 4s8-2 8-4v-5"/></symbol>
+        <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></symbol>
+        <symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3h7l5 5v13H7V3Z"/><path d="M14 3v5h5"/><path d="M9.5 13h5"/><path d="M9.5 17h5"/></symbol>
+        <symbol id="i-grid" viewBox="0 0 24 24"><path d="M4 4h7v7H4V4Z"/><path d="M13 4h7v7h-7V4Z"/><path d="M4 13h7v7H4v-7Z"/><path d="M13 13h7v7h-7v-7Z"/></symbol>
+        <symbol id="i-lock" viewBox="0 0 24 24"><path d="M6 10h12v10H6V10Z"/><path d="M8 10V8a4 4 0 0 1 8 0v2"/></symbol>
+        <symbol id="i-log-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></symbol>
+        <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/></symbol>
+        <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.4-4.8L4 8"/><path d="M4 4v4h4"/><path d="M4 13a8 8 0 0 0 14.4 4.8L20 16"/><path d="M20 20v-4h-4"/></symbol>
+        <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4"/></symbol>
+        <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 20 6v6c0 5-3.4 8-8 9-4.6-1-8-4-8-9V6l8-3Z"/><path d="m8.5 12 2.4 2.4 4.6-5"/></symbol>
+        <symbol id="i-eye" viewBox="0 0 24 24"><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="3"/></symbol>
+        <symbol id="i-eye-off" viewBox="0 0 24 24"><path d="m3 3 18 18"/><path d="M10.7 5.2A10.8 10.8 0 0 1 12 5c6 0 9.5 7 9.5 7a16.6 16.6 0 0 1-2.3 3.1"/><path d="M6.6 6.6C3.9 8.3 2.5 12 2.5 12s3.5 7 9.5 7a9.7 9.7 0 0 0 4.2-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></symbol>
+        <symbol id="i-wallet" viewBox="0 0 24 24"><path d="M4 7h15a1 1 0 0 1 1 1v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h12"/><path d="M16 12h4v4h-4a2 2 0 0 1 0-4Z"/></symbol>
+        <symbol id="i-x" viewBox="0 0 24 24"><path d="m6 6 12 12"/><path d="M18 6 6 18"/></symbol>
+    </svg>
+
+    <section id="auth-view" class="auth-view">
+        <div class="auth-card">
+            <div class="brand-lockup">
+                <span class="brand-mark">EF</span>
+                <span>
+                    <strong>ERP Financeiro</strong>
+                    <small>Inteligencia operacional</small>
+                </span>
+            </div>
+
+            <div class="auth-copy">
+                <p class="eyebrow">Ambiente seguro multiempresa</p>
+                <h1>Controle financeiro com governanca, auditoria e IA.</h1>
+                <p>Entre para acompanhar caixa, recebiveis, pagamentos, relatorios e alertas em uma interface executiva.</p>
+            </div>
+
+            <form id="login-form" class="login-form" autocomplete="on">
+                <label>
+                    Usuario
+                    <input id="username" name="username" type="text" autocomplete="username" required placeholder="admin">
+                </label>
+                <label>
+                    Senha
+                    <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="Admin@123">
+                </label>
+                <label class="mfa-field">
+                    Codigo MFA
+                    <input id="mfa-code" name="mfa_code" type="text" inputmode="numeric" placeholder="Opcional">
+                </label>
+                <button class="btn btn-primary btn-wide" type="submit">
+                    <svg class="icon"><use href="#i-lock"></use></svg>
+                    Entrar no painel
+                </button>
+                <p id="login-error" class="form-error" role="alert"></p>
+            </form>
+
+            <div class="auth-footnote">
+                <span>Demo local: <strong>admin</strong> / <strong>Admin@123</strong></span>
+                <a href="/api/docs/">API docs</a>
+            </div>
+        </div>
+
+        <aside class="auth-showcase">
+            <div class="showcase-header">
+                <span class="status-dot"></span>
+                Operacao consolidada
+            </div>
+            <div class="showcase-metric">
+                <small>Saldo previsto</small>
+                <strong>R$ 1.45 mi</strong>
+                <span>12 empresas ativas</span>
+            </div>
+            <div class="showcase-grid">
+                <div><small>Inadimplencia</small><strong>2.8%</strong></div>
+                <div><small>Alertas IA</small><strong>14</strong></div>
+                <div><small>Auditoria</small><strong>100%</strong></div>
+                <div><small>SLA caixa</small><strong>D+0</strong></div>
+            </div>
+        </aside>
+    </section>
+
+    <div id="app-view" class="app-shell is-hidden">
+        <aside class="sidebar">
+            <div class="brand-lockup sidebar-brand">
+                <span class="brand-mark">EF</span>
+                <span>
+                    <strong>ERP Financeiro</strong>
+                    <small id="tenant-label">Empresa</small>
+                </span>
+            </div>
+
+            <nav class="nav-stack" aria-label="Navegacao principal">
+                <button class="nav-item is-active" data-view="dashboard"><svg class="icon"><use href="#i-grid"></use></svg><span>Visao geral</span></button>
+                <button class="nav-item" data-view="lancamentos"><svg class="icon"><use href="#i-wallet"></use></svg><span>Financeiro</span></button>
+                <button class="nav-item" data-view="aprovacoes"><svg class="icon"><use href="#i-check"></use></svg><span>Aprovacoes</span></button>
+                <button class="nav-item" data-view="cadastros"><svg class="icon"><use href="#i-database"></use></svg><span>Cadastros</span></button>
+                <button class="nav-item" data-view="inteligencia"><svg class="icon"><use href="#i-brain"></use></svg><span>Inteligencia</span></button>
+                <button class="nav-item" data-view="auditoria"><svg class="icon"><use href="#i-shield"></use></svg><span>Auditoria</span></button>
+                <button class="nav-item" data-view="empresas"><svg class="icon"><use href="#i-building"></use></svg><span>Empresas</span></button>
+                <button class="nav-item" data-view="relatorios"><svg class="icon"><use href="#i-file"></use></svg><span>Relatorios</span></button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="mini-profile">
+                    <span id="user-avatar">U</span>
+                    <span>
+                        <strong id="user-name">Usuario</strong>
+                        <small id="user-role">Operacao</small>
+                    </span>
+                </div>
+                <button id="logout-button" class="icon-button" type="button" title="Sair">
+                    <svg class="icon"><use href="#i-log-out"></use></svg>
+                </button>
+            </div>
+        </aside>
+
+        <main class="workspace">
+            <header class="topbar">
+                <div>
+                    <p id="view-kicker" class="eyebrow">Visao geral</p>
+                    <h2 id="view-title">Painel executivo</h2>
+                </div>
+
+                <div class="topbar-actions">
+                    <label class="search-box">
+                        <svg class="icon"><use href="#i-search"></use></svg>
+                        <input id="global-search" type="search" placeholder="Buscar no painel">
+                    </label>
+                    <label class="period-field">
+                        <svg class="icon"><use href="#i-calendar"></use></svg>
+                        <input id="period-start" type="date">
+                    </label>
+                    <label class="period-field">
+                        <input id="period-end" type="date">
+                    </label>
+                    <button id="apply-period" class="icon-button" type="button" title="Aplicar periodo">
+                        <svg class="icon"><use href="#i-check"></use></svg>
+                    </button>
+                    <button id="toggle-values" class="icon-button" type="button" title="Ocultar valores" aria-pressed="false">
+                        <svg class="icon"><use href="#i-eye-off"></use></svg>
+                    </button>
+                    <button id="refresh-button" class="icon-button" type="button" title="Atualizar">
+                        <svg class="icon"><use href="#i-refresh"></use></svg>
+                    </button>
+                </div>
+            </header>
+
+            <section id="dashboard-view" class="screen is-active" data-title="Painel executivo" data-kicker="Visao geral">
+                <div id="kpi-grid" class="kpi-grid"></div>
+
+                <div class="dashboard-grid">
+                    <section class="surface span-2">
+                        <div class="section-heading">
+                            <div>
+                                <p class="eyebrow">Fluxo do periodo</p>
+                                <h3>Entradas, saidas e tendencia</h3>
+                            </div>
+                            <span id="cashflow-badge" class="soft-badge">Atualizando</span>
+                        </div>
+                        <canvas id="cashflow-chart" class="cashflow-chart" width="900" height="320"></canvas>
+                    </section>
+
+                    <section class="surface">
+                        <div class="section-heading">
+                            <div>
+                                <p class="eyebrow">Risco</p>
+                                <h3>Alertas priorizados</h3>
+                            </div>
+                        </div>
+                        <div id="risk-panel" class="risk-panel"></div>
+                    </section>
+
+                    <section class="surface">
+                        <div class="section-heading">
+                            <div>
+                                <p class="eyebrow">Agenda</p>
+                                <h3>Proximos vencimentos</h3>
+                            </div>
+                        </div>
+                        <div id="upcoming-list" class="timeline-list"></div>
+                    </section>
+
+                    <section class="surface span-2">
+                        <div class="section-heading">
+                            <div>
+                                <p class="eyebrow">DRE gerencial</p>
+                                <h3>Resultado do periodo</h3>
+                            </div>
+                        </div>
+                        <div id="dre-table" class="data-table compact"></div>
+                    </section>
+                </div>
+            </section>
+
+            <section id="lancamentos-view" class="screen" data-title="Operacao financeira" data-kicker="Contas e baixas">
+                <div class="toolbar">
+                    <div class="segmented" role="tablist">
+                        <button class="segment is-active" data-ledger="receber" type="button">A receber</button>
+                        <button class="segment" data-ledger="pagar" type="button">A pagar</button>
+                    </div>
+                    <div class="toolbar-actions">
+                        <button id="new-receivable" class="btn btn-secondary" type="button"><svg class="icon"><use href="#i-plus"></use></svg>Novo recebivel</button>
+                        <button id="new-payable" class="btn btn-primary" type="button"><svg class="icon"><use href="#i-plus"></use></svg>Novo pagamento</button>
+                    </div>
+                </div>
+                <div id="ledger-summary" class="kpi-grid small"></div>
+                <div id="ledger-table" class="surface table-surface"></div>
+            </section>
+
+            <section id="aprovacoes-view" class="screen" data-title="Aprovacoes de pagamento" data-kicker="Governanca">
+                <div id="approval-summary" class="kpi-grid small"></div>
+                <div class="dashboard-grid">
+                    <section class="surface span-2">
+                        <div class="section-heading">
+                            <div>
+                                <p class="eyebrow">Pendentes</p>
+                                <h3>Fila para pessoas autorizadas</h3>
+                            </div>
+                        </div>
+                        <div id="approvals-table"></div>
+                    </section>
+                    <section class="surface">
+                        <div class="section-heading">
+                            <div>
+                                <p class="eyebrow">Historico</p>
+                                <h3>Ultimas decisoes</h3>
+                            </div>
+                        </div>
+                        <div id="approval-history" class="timeline-list"></div>
+                    </section>
+                </div>
+            </section>
+
+            <section id="cadastros-view" class="screen" data-title="Cadastros operacionais" data-kicker="Base multiempresa">
+                <div id="registry-grid" class="registry-grid"></div>
+            </section>
+
+            <section id="inteligencia-view" class="screen" data-title="Inteligencia financeira" data-kicker="IA e excecoes">
+                <div class="toolbar">
+                    <div>
+                        <h3>Analises e previsoes</h3>
+                        <p class="muted">Sinais de risco, duplicidades e projecoes de caixa.</p>
+                    </div>
+                    <div class="toolbar-actions">
+                        <button id="run-ai-scan" class="btn btn-primary" type="button"><svg class="icon"><use href="#i-brain"></use></svg>Executar varredura</button>
+                        <button id="run-forecast" class="btn btn-secondary" type="button"><svg class="icon"><use href="#i-activity"></use></svg>Gerar previsao</button>
+                    </div>
+                </div>
+                <div id="ai-summary" class="kpi-grid small"></div>
+                <div id="ai-grid" class="dashboard-grid"></div>
+            </section>
+
+            <section id="auditoria-view" class="screen" data-title="Auditoria e notificacoes" data-kicker="Rastreabilidade">
+                <div class="dashboard-grid">
+                    <section class="surface span-2">
+                        <div class="section-heading">
+                            <div>
+                                <p class="eyebrow">Eventos</p>
+                                <h3>Trilha imutavel</h3>
+                            </div>
+                        </div>
+                        <div id="events-table" class="data-table compact"></div>
+                    </section>
+                    <section class="surface">
+                        <div class="section-heading">
+                            <div>
+                                <p class="eyebrow">Notificacoes</p>
+                                <h3>Fila operacional</h3>
+                            </div>
+                        </div>
+                        <div id="notifications-list" class="timeline-list"></div>
+                    </section>
+                </div>
+            </section>
+
+            <section id="empresas-view" class="screen" data-title="Empresas e modulos" data-kicker="Governanca multiempresa">
+                <div id="company-grid" class="company-grid"></div>
+                <div class="surface table-surface">
+                    <div class="section-heading">
+                        <div>
+                            <p class="eyebrow">Modulos</p>
+                            <h3>Capacidades instaladas</h3>
+                        </div>
+                    </div>
+                    <div id="modules-table" class="data-table compact"></div>
+                </div>
+            </section>
+
+            <section id="relatorios-view" class="screen" data-title="Relatorios executivos" data-kicker="Exportacao">
+                <div class="report-layout">
+                    <form id="report-form" class="surface report-form">
+                        <div class="section-heading">
+                            <div>
+                                <p class="eyebrow">Gerador</p>
+                                <h3>Exportar dados auditados</h3>
+                            </div>
+                        </div>
+                        <label>
+                            Tipo
+                            <select id="report-type" required>
+                                <option value="fluxo_caixa">Fluxo de caixa</option>
+                                <option value="contas_receber">Contas a receber</option>
+                                <option value="contas_pagar">Contas a pagar</option>
+                                <option value="eventos">Eventos de auditoria</option>
+                            </select>
+                        </label>
+                        <label>
+                            Formato
+                            <select id="report-format" required>
+                                <option value="xlsx">XLSX</option>
+                                <option value="csv">CSV</option>
+                                <option value="pdf">PDF</option>
+                            </select>
+                        </label>
+                        <button class="btn btn-primary btn-wide" type="submit">
+                            <svg class="icon"><use href="#i-download"></use></svg>
+                            Baixar relatorio
+                        </button>
+                    </form>
+                    <section class="surface span-2">
+                        <div class="section-heading">
+                            <div>
+                                <p class="eyebrow">Historico</p>
+                                <h3>Ultimos eventos de exportacao</h3>
+                            </div>
+                        </div>
+                        <div id="report-events" class="data-table compact"></div>
+                    </section>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="toast-region" class="toast-region" aria-live="polite"></div>
+    <div id="modal-root" class="modal-root" hidden></div>
+
+    <script type="module" src="{% static 'frontend/js/app.js' %}"></script>
+</body>
+</html>
