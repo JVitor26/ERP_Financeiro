@@ -1,6 +1,6 @@
 # ERP Financeiro Inteligente
 
-Base inicial para um ERP financeiro modular, rastreavel e preparado para camadas de IA.
+ERP financeiro modular, multiempresa, rastreavel e preparado para camadas de IA.
 
 O projeto foi estruturado para um MVP com:
 
@@ -67,12 +67,12 @@ Usuario demo:
 - `admin` / `Admin@123`
 - `demo` / `Demo@123`
 
-## Documentos principais
+## Documentacao principal
 
 - [Documentacao completa do sistema](docs/documentacao-sistema.md)
+- [API completa](docs/api.md)
+- [Modelo de dados completo](docs/modelo-dados.md)
 - [Requisitos do MVP](docs/requisitos-mvp.md)
 - [Arquitetura modular](docs/arquitetura.md)
 - [Backlog inicial](docs/backlog-mvp.md)
-- [Modelo de dados](docs/modelo-dados.md)
 - [Taxonomia de eventos](docs/taxonomia-eventos.md)
-- [API inicial](docs/api.md)

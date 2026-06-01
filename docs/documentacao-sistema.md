@@ -1,223 +1,465 @@
-# Documentacao do Sistema ERP Financeiro Inteligente
+# Documentacao completa do ERP Financeiro Inteligente
 
-## 1. Visao geral
+Este documento descreve o sistema implementado no repositorio `ERP_Financeiro`. Ele consolida a visao funcional, tecnica e operacional do MVP para que uma pessoa consiga entender o que existe, como executar, como operar, quais regras existem e onde evoluir.
 
-O ERP Financeiro Inteligente e um sistema web para controle financeiro multiempresa. Ele centraliza cadastros operacionais, contas a pagar, contas a receber, movimentacoes bancarias, fluxo de caixa, DRE gerencial, aprovacoes, auditoria, notificacoes, relatorios e uma camada inicial de inteligencia financeira.
+## 1. Objetivo do sistema
 
-O sistema foi construido com:
+O ERP Financeiro Inteligente e uma aplicacao web multiempresa para gestao financeira operacional. O sistema centraliza cadastros, contas a pagar, contas a receber, movimentacoes, fluxo de caixa, DRE gerencial, conciliacao bancaria, aprovacoes, auditoria, relatorios e uma camada inicial de inteligencia financeira.
 
-- Backend em Django 5 e Django REST Framework.
-- Autenticacao por JWT.
-- Banco SQLite para ambiente local.
-- Estrutura preparada para PostgreSQL em producao.
-- Frontend web em HTML, CSS e JavaScript puro.
-- API documentada em Swagger.
+O foco do MVP e entregar:
 
-## 2. Acessos locais
+- controle financeiro essencial;
+- rastreabilidade de eventos;
+- operacao separada por empresa;
+- permissoes por perfil, tela e acao;
+- painel web executivo;
+- API REST documentada;
+- base de IA simples para alertas, anomalias e previsoes.
 
-URLs principais:
+## 2. Stack
 
-- Painel web: `http://127.0.0.1:8000/`
-- Admin Django: `http://127.0.0.1:8000/admin/`
-- API docs: `http://127.0.0.1:8000/api/docs/`
-- Token JWT: `POST /api/auth/token/`
+- Backend: Django 5 e Django REST Framework.
+- Autenticacao: JWT com `djangorestframework-simplejwt`.
+- Banco local: SQLite.
+- Banco recomendado em producao: PostgreSQL.
+- Filtros: `django-filter`.
+- Documentacao OpenAPI: `drf-spectacular` e Swagger.
+- Exportacao XLSX: `openpyxl`.
+- Exportacao PDF: `reportlab`.
+- Frontend: HTML, CSS e JavaScript puro.
+- Container: Dockerfile e `docker-compose.yml`.
 
-Usuarios locais:
+## 3. Organizacao do repositorio
 
-- Superuser: `admin` / `Admin@123`
-- Usuario demo: `demo` / `Demo@123`
+```text
+erp_financeiro/        Configuracoes globais, URLs, ASGI e WSGI
+core/                  Empresas, usuarios, modulos, permissoes, auditoria e autenticacao
+financeiro/            Cadastros financeiros, titulos, baixas, fluxo, DRE, conciliacao e relatorios
+inteligencia/          Alertas, anomalias e previsoes
+templates/frontend/    HTML do painel web
+core/static/frontend/  CSS e JavaScript do painel web
+docs/                  Documentacao funcional e tecnica
+sql/                   Esquema SQL conceitual do MVP
+```
 
-## 3. Como executar
+## 4. Arquivos de configuracao
 
-Ambiente local com virtualenv:
+O projeto le variaveis do arquivo `.env` usando `python-dotenv`. O arquivo `.env.example` documenta os valores esperados.
+
+Variaveis principais:
+
+```text
+SECRET_KEY
+DEBUG
+ALLOWED_HOSTS
+DATABASE_URL
+JWT_ACCESS_MINUTES
+JWT_REFRESH_DAYS
+LOGIN_FAILURE_LIMIT
+LOGIN_LOCKOUT_MINUTES
+SECURE_SSL_REDIRECT
+SESSION_COOKIE_SECURE
+CSRF_COOKIE_SECURE
+```
+
+Quando `DATABASE_URL` comeca com `sqlite:///`, o Django usa SQLite no arquivo local. Quando nao comeca com `sqlite:///`, o projeto usa PostgreSQL e le:
+
+```text
+POSTGRES_DB
+POSTGRES_USER
+POSTGRES_PASSWORD
+POSTGRES_HOST
+POSTGRES_PORT
+```
+
+## 5. Execucao local
+
+Preparar ambiente:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+Aplicar banco e dados iniciais:
 
 ```powershell
 .\.venv\Scripts\python.exe manage.py migrate
 .\.venv\Scripts\python.exe manage.py seed_mvp
+.\.venv\Scripts\python.exe manage.py seed_demo
 .\.venv\Scripts\python.exe manage.py seed_operacional
+```
+
+Executar:
+
+```powershell
 .\.venv\Scripts\python.exe manage.py runserver 127.0.0.1:8000
 ```
 
-Testes:
+Validar:
 
 ```powershell
 .\.venv\Scripts\python.exe manage.py check
 .\.venv\Scripts\python.exe manage.py test core financeiro inteligencia --verbosity 2
+node --check core\static\frontend\js\app.js
+node --check core\static\frontend\js\api.js
+node --check core\static\frontend\js\data.js
+node --check core\static\frontend\js\ui.js
 ```
 
-Backup SQLite:
+## 6. Acessos locais
 
-```powershell
-.\.venv\Scripts\python.exe manage.py backup_sqlite
-```
+- Painel web: `http://127.0.0.1:8000/`
+- Admin Django: `http://127.0.0.1:8000/admin/`
+- Swagger: `http://127.0.0.1:8000/api/docs/`
+- Schema OpenAPI: `http://127.0.0.1:8000/api/schema/`
+- JWT: `POST /api/auth/token/`
 
-## 4. Organizacao do projeto
+Usuarios criados pelo `seed_demo`:
 
-```text
-erp_financeiro/       Configuracoes, URLs principais e WSGI/ASGI
-core/                 Empresas, usuarios, perfis, permissoes, auditoria e autenticacao
-financeiro/           Cadastros financeiros, contas, DRE, fluxo, relatorios e conciliacao
-inteligencia/         Alertas, anomalias e previsoes
-templates/frontend/   Estrutura HTML do painel web
-core/static/frontend/ CSS e JavaScript do painel
-docs/                 Documentacao do produto e do projeto
-sql/                  Modelo SQL conceitual
-```
+- `admin` / `Admin@123`
+- `demo` / `Demo@123`
 
-## 5. Autenticacao e seguranca
+## 7. Modulos do sistema
 
-O login do painel usa JWT via endpoint `/api/auth/token/`.
+### Core
 
-O endpoint `/api/auth/me/` retorna os dados do usuario autenticado e e usado pelo painel para identificar:
+Responsavel pela base administrativa:
 
-- usuario logado;
-- empresa vinculada;
-- permissao administrativa;
-- informacoes de sessao.
+- empresas;
+- usuarios;
+- modulos;
+- instalacao de modulos por empresa;
+- perfis;
+- permissoes;
+- vinculo de perfil com permissao;
+- vinculo de usuario com perfil;
+- auditoria imutavel;
+- tentativas de login;
+- notificacoes.
 
-Regras importantes:
+### Financeiro
 
-- Superuser acessa todos os dados.
-- Usuarios comuns ficam restritos a propria empresa.
-- Escrita em areas sensiveis depende de permissoes por acao.
-- Tentativas de login falhas sao registradas e podem gerar bloqueio temporario.
-- Eventos operacionais relevantes sao registrados em auditoria.
-
-## 6. Multiempresa
-
-Cada registro financeiro pertence a uma empresa. A regra de escopo esta centralizada em mixins de queryset:
-
-- superuser ve todas as empresas;
-- usuario comum ve apenas registros da empresa vinculada;
-- criacoes feitas por usuario comum herdam a empresa do usuario.
-
-Entidades ligadas a empresa:
+Responsavel pela operacao financeira:
 
 - clientes;
 - fornecedores;
 - servicos;
-- contas bancarias;
 - centros de custo;
 - plano de contas;
+- contas bancarias;
 - contas a pagar;
 - contas a receber;
-- movimentacoes;
-- conciliacoes;
+- movimentacoes financeiras;
+- conciliacao bancaria;
+- orcamentos;
+- aprovacoes de pagamento;
 - relatorios;
-- notificacoes;
-- alertas e previsoes.
+- anexos financeiros.
 
-## 7. Modulo Core
+### Inteligencia
 
-O modulo `core` cuida da base administrativa do sistema.
+Responsavel pela camada inicial de analise:
 
-Principais entidades:
+- alertas de IA;
+- anomalias;
+- previsoes;
+- varredura de duplicidades;
+- analise de fornecedor fora do padrao;
+- previsao baseline de caixa;
+- feedback sobre analises.
 
-- `Empresa`: cadastro das empresas/tenants.
-- `Usuario`: usuario customizado com vinculo opcional a empresa.
-- `Modulo`: capacidades instalaveis do sistema.
-- `EmpresaModulo`: modulos ativos por empresa.
-- `Perfil`: agrupamento de permissoes.
-- `Permissao`: permissao por modulo, tela e acao.
-- `PerfilPermissao`: vinculo entre perfil e permissao.
-- `UsuarioPerfil`: perfis concedidos a usuarios.
-- `EventLog`: trilha de auditoria imutavel.
-- `Notificacao`: fila de notificacoes operacionais.
+## 8. Frontend web
 
-## 8. Modulo Financeiro
+O painel web fica em `templates/frontend/index.html` e consome os arquivos em `core/static/frontend/`.
 
-O modulo `financeiro` contem a operacao principal.
+Telas disponiveis:
 
-### Cadastros
+- Login: autenticacao JWT, campo opcional de MFA e mensagem de erro.
+- Visao geral: KPIs, grafico de fluxo, alertas de risco, proximos vencimentos e DRE.
+- Financeiro: contas a receber, contas a pagar, criacao de titulos, baixa e recebimento.
+- Aprovacoes: fila de aprovacoes pendentes e historico de decisoes.
+- Cadastros: clientes, fornecedores, servicos, contas bancarias, centros de custo e plano de contas.
+- Inteligencia: alertas, anomalias, previsoes, varredura e feedback.
+- Auditoria: eventos imutaveis e notificacoes.
+- Empresas: empresas e modulos instalados.
+- Relatorios: exportacao de fluxo, contas e eventos.
 
-Na tela **Cadastros** e possivel criar e consultar:
+O frontend usa `localStorage` para:
 
-- clientes;
-- fornecedores;
-- servicos;
-- contas bancarias;
-- centros de custo;
-- plano de contas.
+- guardar token de acesso e refresh;
+- memorizar se valores monetarios devem ficar ocultos.
+
+O botao de olho mascara valores como `R$ ***` em cards, tabelas e paineis.
+
+## 9. Autenticacao
+
+O login e feito por JWT em `POST /api/auth/token/`. O retorno contem `access`, `refresh` e dados basicos do usuario.
+
+Regras implementadas:
+
+- login bem sucedido registra evento `core.auth.login_sucesso`;
+- login falho registra evento `core.auth.login_falhou`;
+- tentativas falhas sao contadas por `username` e IP;
+- apos o limite configurado, o usuario fica bloqueado temporariamente;
+- usuarios com `mfa_habilitado=True` precisam enviar `mfa_code`;
+- o codigo MFA aceito no MVP e `000000`;
+- refresh de token usa `POST /api/auth/token/refresh/`;
+- o painel consulta `GET /api/auth/me/` apos autenticar.
+
+## 10. Multiempresa
+
+O isolamento por empresa e feito por `EmpresaScopedQuerysetMixin`.
+
+Regras:
+
+- superuser enxerga todas as empresas;
+- usuario comum enxerga apenas registros da sua empresa;
+- quando usuario comum cria registro com campo `empresa`, o backend grava a empresa do usuario;
+- usuario sem empresa vinculada recebe erro em endpoints que exigem empresa operacional;
+- recursos ligados indiretamente a empresa usam `empresa_field`, por exemplo `conta_pagar__empresa`.
+
+Entidades diretamente escopadas por empresa incluem clientes, fornecedores, servicos, contas bancarias, centros de custo, plano de contas, contas a pagar, contas a receber, movimentacoes, conciliacoes, orcamentos, notificacoes, alertas, anomalias e previsoes.
+
+## 11. Permissoes
+
+Existem duas politicas principais:
+
+- `StaffWritePermission`: leitura para autenticados e escrita apenas para `is_staff`. Usada nos cadastros administrativos do core.
+- `PermissaoPorAcao`: valida codigos de permissao em `UsuarioPerfil -> PerfilPermissao -> Permissao`.
+
+O superuser sempre passa.
+
+Mapeamento padrao por metodo:
+
+```text
+GET/HEAD/OPTIONS -> visualizar
+POST/PUT/PATCH   -> editar
+DELETE           -> excluir
+```
+
+Actions especificas podem sobrescrever esse mapeamento:
+
+```text
+financeiro.contas_pagar.baixar
+financeiro.contas_pagar.aprovar
+financeiro.contas_receber.receber
+financeiro.conciliacoes.importar
+financeiro.conciliacoes.conciliar
+financeiro.relatorios.exportar
+inteligencia.anomalias.gerar
+inteligencia.previsoes.editar
+```
+
+Perfis padrao criados pelo `seed_mvp`:
+
+- Administrador: todas as permissoes.
+- Financeiro: permissoes do modulo financeiro.
+- Diretoria: leitura, exportacao e inteligencia.
+- Auditor: leitura, exportacao e auditoria.
+
+## 12. Auditoria
+
+O modelo `EventLog` e a trilha imutavel do sistema. Ele nao permite alteracao nem exclusao depois de criado.
+
+Campos relevantes:
+
+- `event_id`: UUID publico do evento;
+- `tipo_evento`: criacao, alteracao, exclusao logica, baixa, aprovacao, reprovacao, exportacao, acesso sensivel, alerta de sistema, alerta de IA ou integracao;
+- `usuario` e `empresa`;
+- `modulo`, `tela` e `acao`;
+- `registro_modelo` e `registro_id`;
+- `valor_anterior` e `valor_novo`;
+- `ip`, `dispositivo` e `origem`;
+- `justificativa`;
+- `nivel_risco`;
+- `hash_anterior` e `hash_evento`;
+- `metadados`;
+- `criado_em`.
+
+A cadeia de hashes usa SHA-256 sobre os dados principais do evento e o hash anterior, criando rastreabilidade sequencial.
+
+Eventos automaticos sao gerados em:
+
+- criacao e alteracao via viewsets auditados;
+- exclusao logica de contas;
+- baixa de contas a pagar;
+- recebimento de contas a receber;
+- aprovacao e reprovacao;
+- cancelamentos;
+- renegociacao;
+- importacao e conciliacao;
+- exportacao de relatorios;
+- login com sucesso/falha;
+- alertas de IA.
+
+## 13. Regras financeiras gerais
+
+Regras de validacao:
+
+- `valor_original` precisa ser maior que zero.
+- `desconto`, `juros`, `multa`, `acrescimo`, `honorarios`, `valor_pago` e `valor_recebido` nao podem ser negativos.
+- `desconto` nao pode ser maior que `valor_original`.
+- `data_vencimento` nao pode ser anterior a `data_emissao`.
+- relacionamentos financeiros precisam pertencer a mesma empresa do titulo.
+- conta paga nao pode ter campos financeiros criticos alterados.
+- conta recebida nao pode ter campos financeiros criticos alterados.
+- status `pago` e `recebido` devem ser atingidos por baixa/recebimento, nao por alteracao direta.
+
+## 14. Cadastros financeiros
+
+Cadastros disponiveis:
+
+- Centro de custo: codigo, nome, hierarquia por `pai` e status ativo.
+- Plano de contas: codigo, nome, tipo, hierarquia, vinculo com DRE e fluxo.
+- Conta bancaria: banco, agencia, numero, descricao, saldo inicial e status ativo.
+- Cliente: nome, tipo de pessoa, documento, email, telefone e metadados.
+- Fornecedor: nome, tipo de pessoa, documento, email, telefone e metadados.
+- Servico: codigo, nome, descricao, valor padrao, plano de contas e metadados.
+
+Restricoes:
+
+- centro de custo e plano de contas possuem codigo unico por empresa;
+- servico possui codigo unico por empresa quando codigo nao esta vazio;
+- clientes e fornecedores sao indexados por empresa e documento.
+
+## 15. Contas a pagar
+
+Contas a pagar representam titulos de fornecedores.
 
 Campos principais:
 
-- Cliente/Fornecedor: nome, tipo de pessoa, documento, email, telefone e status.
-- Servico: codigo, nome, descricao, valor padrao e plano de contas.
-- Conta bancaria: banco, agencia, numero, descricao, saldo inicial e status.
-- Centro de custo: codigo, nome, pai e status.
-- Plano de contas: codigo, nome, tipo, pai, vinculo com DRE e fluxo de caixa.
-
-### Contas a receber
-
-Representa titulos a receber de clientes.
-
-Campos importantes:
-
-- cliente;
-- descricao;
-- data de emissao;
-- data de vencimento;
-- valor original;
-- descontos, juros, multa e acrescimos;
-- centro de custo;
-- plano de contas;
-- conta bancaria;
-- status;
-- valor recebido;
-- saldo pendente.
-
-Acoes:
-
-- criar recebivel;
-- registrar recebimento total ou parcial;
-- renegociar;
-- cancelar via API;
-- anexar arquivo via API.
-
-### Contas a pagar
-
-Representa titulos de fornecedores.
-
-Campos importantes:
-
+- empresa;
 - fornecedor;
 - descricao;
 - data de emissao;
 - data de vencimento;
 - valor original;
-- descontos, juros, multa e acrescimos;
-- numero de documento;
-- nota fiscal;
+- desconto, juros, multa e acrescimo;
 - centro de custo;
 - plano de contas;
 - conta bancaria;
-- status;
+- numero do documento;
+- nota fiscal;
 - valor pago;
-- saldo pendente.
+- forma de pagamento;
+- status;
+- data de baixa;
+- usuario que baixou;
+- comprovante;
+- responsavel;
+- exclusao logica.
+
+Status possiveis:
+
+```text
+aberto
+a_vencer
+vencido
+pago
+pago_parcial
+cancelado
+em_aprovacao
+reprovado
+agendado
+```
 
 Acoes:
 
-- criar pagamento;
+- criar/editar/listar/detalhar;
+- baixar total ou parcialmente;
 - solicitar aprovacao;
-- aprovar ou reprovar pagamento;
-- baixar pagamento total ou parcial;
-- cancelar via API;
-- anexar comprovante via API.
+- cancelar com justificativa;
+- anexar comprovante;
+- excluir logicamente.
 
-### Movimentacoes financeiras
+Regras de baixa:
 
-Movimentacoes representam entradas e saidas realizadas.
+- valor precisa ser maior que zero;
+- conta excluida, paga, cancelada ou reprovada nao pode ser baixada;
+- conta com aprovacao pendente nao pode ser baixada;
+- valor de baixa nao pode ultrapassar saldo pendente;
+- baixa parcial muda status para `pago_parcial`;
+- baixa total muda status para `pago`;
+- baixa com conta bancaria gera `MovimentacaoFinanceira` de saida.
 
-Elas podem ser criadas por:
+## 16. Contas a receber
 
-- baixa de conta a pagar;
-- recebimento de conta a receber;
-- carga operacional;
-- integracoes futuras.
+Contas a receber representam titulos de clientes.
 
 Campos principais:
 
-- tipo: entrada ou saida;
+- empresa;
+- cliente;
+- contrato;
+- parcela;
+- descricao;
+- data de emissao;
+- data de vencimento;
+- valor original;
+- desconto, juros, multa, acrescimo e honorarios;
+- centro de custo;
+- plano de contas;
+- conta bancaria;
+- valor recebido;
+- forma de recebimento;
+- status;
+- data de recebimento;
+- usuario que recebeu;
+- conta original em caso de renegociacao;
+- dados de renegociacao;
+- responsavel;
+- exclusao logica.
+
+Status possiveis:
+
+```text
+aberto
+a_vencer
+vencido
+recebido
+recebido_parcial
+cancelado
+renegociado
+em_cobranca
+judicial
+protestado
+```
+
+Acoes:
+
+- criar/editar/listar/detalhar;
+- receber total ou parcialmente;
+- renegociar;
+- cancelar com justificativa;
+- anexar arquivo;
+- excluir logicamente.
+
+Regras de recebimento:
+
+- valor precisa ser maior que zero;
+- conta excluida, recebida ou cancelada nao pode ser recebida;
+- valor recebido nao pode ultrapassar saldo pendente;
+- recebimento parcial muda status para `recebido_parcial`;
+- recebimento total muda status para `recebido`;
+- recebimento com conta bancaria gera `MovimentacaoFinanceira` de entrada.
+
+Regras de renegociacao:
+
+- conta recebida ou cancelada nao pode ser renegociada;
+- conta original muda para `renegociado`;
+- nova conta e criada com nova data, valor e encargos;
+- nova conta aponta para `conta_original`.
+
+## 17. Movimentacoes financeiras
+
+Movimentacoes representam entradas e saidas realizadas. Elas sao geradas por baixas, recebimentos, cargas operacionais ou integracoes futuras.
+
+Campos:
+
+- empresa;
+- tipo (`entrada` ou `saida`);
 - descricao;
 - data do movimento;
 - data de competencia;
@@ -225,180 +467,245 @@ Campos principais:
 - conta bancaria;
 - centro de custo;
 - plano de contas;
-- origem;
+- origem_modelo;
+- origem_id;
 - conciliado.
 
-## 9. DRE Gerencial
+O endpoint de movimentacoes e somente leitura.
 
-A DRE fica no painel de visao geral.
+## 18. Fluxo de caixa
 
-Ela usa as movimentacoes financeiras realizadas no periodo selecionado. A estrutura atual e:
+O fluxo calcula:
 
-- `+ Receita bruta`
-- `- Deducoes, impostos, taxas e comissoes`
-- `= Receita liquida`
-- `- Custos variaveis`
-- `= Margem de contribuicao`
-- `- Despesas operacionais`
-- `= Resultado operacional`
-- `- Investimentos e outras saidas`
-- `= Lucro / prejuizo`
+- total a pagar pendente no periodo;
+- total a receber pendente no periodo;
+- entradas realizadas;
+- saidas realizadas;
+- saldo previsto;
+- saldo realizado;
+- inadimplencia.
 
-### Abertura por linha principal
+Endpoints:
 
-As linhas principais da DRE sao clicaveis quando possuem sublinhas. Ao clicar:
+- `GET /api/financeiro/fluxo-caixa/`
+- `GET /api/financeiro/fluxo-caixa/dashboard/`
+- `GET /api/financeiro/fluxo-caixa/dre/`
 
-- os itens secundarios daquela linha desaparecem;
-- a DRE fica resumida naquele grupo;
-- ao clicar novamente, a abertura volta a aparecer.
+Todos exigem `data_inicio` e `data_fim`.
 
-Isso vale para receitas, deducoes, custos, despesas e investimentos/outros quando houver movimentacao.
+## 19. DRE gerencial
 
-### Custos dentro da DRE
+A DRE usa movimentacoes realizadas no periodo.
 
-Os custos aparecem dentro de `Custos variaveis`, agrupados por plano de contas do tipo `custo`.
+Linhas principais:
 
-Exemplo:
+- Receita bruta;
+- Deducoes, impostos, taxas e comissoes;
+- Receita liquida;
+- Custos variaveis;
+- Margem de contribuicao;
+- Despesas operacionais;
+- Resultado operacional;
+- Investimentos e outras saidas;
+- Lucro / prejuizo.
 
-- `3.1 - Custo de entrega`
-- `3.2 - Manutencao predial`
+Classificacao:
 
-### Despesas dentro da DRE
+- toda entrada soma em receita bruta;
+- saidas com plano `imposto`, `taxa`, `comissao` ou `repasse` entram em deducoes;
+- saidas com plano `custo` entram em custos variaveis;
+- saidas com plano `despesa` entram em despesas operacionais;
+- saidas com plano `investimento` entram em investimentos;
+- demais saidas entram em outras saidas.
 
-As despesas aparecem dentro de `Despesas operacionais`, agrupadas por plano de contas do tipo `despesa`.
+A resposta tambem traz abertura por centro de custo e por plano de contas.
 
-Exemplo:
+## 20. Conciliacao bancaria
 
-- `2.1 - Fornecedores operacionais`
-- `2.2 - Despesas administrativas`
-- `2.3 - Marketing e vendas`
+O modulo de conciliacao importa extratos CSV e vincula linhas bancarias a movimentacoes.
 
-### Receitas dentro da DRE
+Campos da conciliacao:
 
-As receitas aparecem dentro de `Receita bruta`, agrupadas por plano de contas com entradas realizadas.
+- empresa;
+- conta bancaria;
+- data do movimento;
+- valor;
+- historico;
+- documento;
+- status;
+- movimentacao vinculada;
+- metadados.
 
-### Cores e sinais
-
-- `+` em verde: entrada/receita.
-- `-` em vermelho: saida, deducao, custo ou despesa.
-- `=` em verde quando o resultado e positivo.
-- `=` em vermelho quando o resultado e negativo.
-
-### Centros de custo
-
-A DRE tambem mostra uma tabela por centro de custo com:
-
-- entradas;
-- saidas;
-- resultado;
-- quantidade de transacoes.
-
-### Plano de contas
-
-A abertura por plano de contas mostra:
-
-- codigo;
-- nome;
-- tipo;
-- entradas;
-- saidas;
-- resultado.
-
-## 10. Botao de ocultar valores
-
-No topo do painel existe um botao com icone de olho para ocultar ou mostrar valores.
-
-Quando ativado, os valores monetarios aparecem mascarados como:
+Status:
 
 ```text
-R$ ***
+pendente
+sugerida
+conciliada
+divergente
+duplicada
 ```
 
-O recurso se aplica a:
+CSV aceito:
 
-- KPIs do dashboard;
-- agenda de vencimentos;
-- DRE;
-- contas a receber;
-- contas a pagar;
-- aprovacoes;
-- cadastros com valores;
-- previsoes.
+- delimitador `,` ou `;`;
+- colunas `data` ou `data_movimento`;
+- coluna `valor`;
+- coluna `historico` ou `descricao`;
+- coluna opcional `documento`.
 
-O estado fica salvo no navegador local.
+Sugestao automatica:
 
-## 11. Aprovacoes
+- busca movimentacao da mesma empresa e conta bancaria;
+- valor igual ao modulo do valor do extrato;
+- data em janela de 3 dias antes ou depois;
+- movimentacao ainda nao conciliada.
 
-A tela **Aprovacoes** centraliza solicitacoes de pagamento que precisam de decisao.
+Conciliacao manual:
+
+- vincula a movimentacao informada;
+- marca conciliacao como `conciliada`;
+- marca movimentacao como `conciliado=True`;
+- registra evento.
+
+## 21. Orcamentos
+
+Orcamentos guardam previsoes por periodo e dimensoes financeiras.
+
+Campos:
+
+- empresa;
+- ano;
+- mes opcional;
+- centro de custo opcional;
+- plano de contas opcional;
+- valor previsto;
+- valor realizado.
+
+Restricao:
+
+- a combinacao empresa, ano, mes, centro de custo e plano de contas e unica.
+
+## 22. Aprovacoes de pagamento
 
 Fluxo:
 
 1. Usuario solicita aprovacao em uma conta a pagar.
 2. A conta muda para `em_aprovacao`.
-3. Um aprovador aprova ou reprova.
-4. Se aprovada, a conta fica `agendada`.
-5. Se reprovada, a conta fica `reprovado`.
+3. Registro `AprovacaoPagamento` fica `pendente`.
+4. Aprovador aprova ou reprova.
+5. Se aprovada, a conta muda para `agendado`.
+6. Se reprovada, a conta muda para `reprovado`.
 
-Toda decisao gera evento de auditoria.
+Campos:
 
-## 12. Auditoria
+- conta a pagar;
+- solicitante;
+- aprovador;
+- status;
+- justificativa;
+- data de decisao.
 
-A tela **Auditoria** exibe eventos registrados no `EventLog`.
+Status:
 
-Eventos incluem:
+```text
+pendente
+aprovado
+reprovado
+cancelado
+```
 
-- criacao;
-- alteracao;
-- exclusao logica;
-- baixa;
-- aprovacao;
-- reprovacao;
-- exportacao;
-- acesso sensivel;
-- alerta de sistema;
-- alerta de IA;
-- integracao.
+Toda decisao registra evento de risco alto.
 
-O log e imutavel:
+## 23. Relatorios
 
-- nao pode ser alterado depois de criado;
-- nao pode ser excluido;
-- possui hash de evento e hash anterior para rastreabilidade.
+Endpoint:
 
-## 13. Inteligencia financeira
+```text
+POST /api/financeiro/relatorios/
+```
 
-O modulo `inteligencia` contem:
+Tipos:
 
-- alertas;
-- anomalias;
-- previsoes.
-
-A tela permite:
-
-- executar varredura;
-- gerar previsao baseline de caixa;
-- confirmar ou descartar anomalias.
-
-## 14. Relatorios
-
-A tela **Relatorios** exporta dados auditados.
-
-Tipos disponiveis:
-
-- fluxo de caixa;
-- contas a receber;
-- contas a pagar;
-- eventos de auditoria.
+- `contas_pagar`;
+- `contas_receber`;
+- `fluxo_caixa`;
+- `eventos`.
 
 Formatos:
 
-- CSV;
-- XLSX;
-- PDF.
+- `csv`;
+- `xlsx`;
+- `pdf`.
 
-Toda exportacao gera evento de auditoria.
+O backend:
 
-## 15. Endpoints principais
+- filtra pelo periodo;
+- gera arquivo para download;
+- registra evento de exportacao;
+- cria `RelatorioGerado` com tipo, formato e parametros.
+
+## 24. Anexos
+
+Anexos financeiros sao gravados em `AnexoFinanceiro`.
+
+Campos:
+
+- empresa;
+- arquivo;
+- nome original;
+- content type;
+- tamanho;
+- origem_modelo;
+- origem_id;
+- usuario que enviou.
+
+Acoes implementadas:
+
+- `POST /api/financeiro/contas-pagar/{id}/anexar/`;
+- `POST /api/financeiro/contas-receber/{id}/anexar/`.
+
+O upload usa `multipart/form-data` com campo `arquivo`.
+
+## 25. Inteligencia financeira
+
+Modelos:
+
+- `AlertaIA`: mensagem operacional exibivel ao usuario.
+- `Anomalia`: evidencia estruturada para analise.
+- `PrevisaoIA`: previsao numerica por metrica e horizonte.
+
+Status de analise:
+
+```text
+aberto
+em_analise
+confirmado
+descartado
+resolvido
+```
+
+Tipos de anomalia:
+
+```text
+pagamento_duplicado
+valor_fora_padrao
+comportamento_usuario
+inadimplencia
+orcamento_estourado
+```
+
+Analises implementadas:
+
+- pagamento duplicado por fornecedor, valor, vencimento e documento;
+- pagamento fora do padrao historico do fornecedor;
+- previsao baseline de caixa para horizonte informado;
+- varredura geral que executa duplicidades, fora do padrao e previsao;
+- feedback para confirmar, descartar, resolver ou colocar em analise.
+
+## 26. API principal
+
+Documentacao detalhada fica em [api.md](api.md). Resumo:
 
 Autenticacao:
 
@@ -415,26 +722,26 @@ Core:
 - `/api/core/usuarios/`
 - `/api/core/perfis/`
 - `/api/core/permissoes/`
+- `/api/core/perfil-permissoes/`
+- `/api/core/usuario-perfis/`
 - `/api/core/eventos/`
 - `/api/core/notificacoes/`
 
 Financeiro:
 
+- `/api/financeiro/centros-custo/`
+- `/api/financeiro/plano-contas/`
+- `/api/financeiro/contas-bancarias/`
 - `/api/financeiro/clientes/`
 - `/api/financeiro/fornecedores/`
 - `/api/financeiro/servicos/`
-- `/api/financeiro/contas-bancarias/`
-- `/api/financeiro/centros-custo/`
-- `/api/financeiro/plano-contas/`
-- `/api/financeiro/contas-receber/`
 - `/api/financeiro/contas-pagar/`
+- `/api/financeiro/contas-receber/`
 - `/api/financeiro/movimentacoes/`
 - `/api/financeiro/conciliacoes/`
 - `/api/financeiro/orcamentos/`
 - `/api/financeiro/aprovacoes-pagamento/`
 - `/api/financeiro/fluxo-caixa/`
-- `/api/financeiro/fluxo-caixa/dashboard/`
-- `/api/financeiro/fluxo-caixa/dre/`
 - `/api/financeiro/relatorios/`
 
 Inteligencia:
@@ -443,145 +750,149 @@ Inteligencia:
 - `/api/inteligencia/anomalias/`
 - `/api/inteligencia/previsoes/`
 
-## 16. Comandos de carga
+## 27. Paginacao, filtros e busca
+
+A API usa paginacao padrao por pagina.
+
+Parametros comuns:
+
+```text
+page
+page_size
+search
+ordering
+```
+
+Os viewsets tambem expoem filtros por campos como `empresa`, `status`, `tipo`, `ativo`, `conta_bancaria`, `centro_custo`, `plano_conta`, `usuario`, `perfil`, `modulo` e outros. Os filtros completos estao em [api.md](api.md).
+
+## 28. Comandos de carga e manutencao
 
 ### `seed_mvp`
 
 Cria:
 
-- modulos padrao;
-- permissoes;
-- perfis de acesso.
+- modulos `core`, `financeiro` e `inteligencia`;
+- permissoes por modulo, tela e acao;
+- perfis padrao.
 
 ### `seed_demo`
 
 Cria:
 
 - empresa demo;
-- usuarios demo;
-- alguns cadastros e titulos basicos.
+- usuario `admin`;
+- usuario `demo`;
+- modulos instalados;
+- cadastros basicos;
+- contas a pagar e receber de demonstracao.
 
 ### `seed_operacional`
 
-Cria uma base operacional mais completa:
+Cria uma massa operacional maior:
 
-- varios clientes;
-- varios fornecedores;
+- 10 centros de custo;
+- 14 planos de conta;
+- 5 contas bancarias;
+- 20 clientes;
+- 20 fornecedores;
+- 10 servicos;
+- 80 contas a receber;
+- 75 contas a pagar;
+- 120 movimentacoes financeiras.
+
+### `backup_sqlite`
+
+Copia o banco SQLite atual para `backups/db-YYYYMMDD-HHMMSS.sqlite3`.
+
+## 29. Admin Django
+
+O admin registra os modelos principais:
+
+- Empresa, Modulo, EmpresaModulo;
+- Usuario;
+- Perfil, Permissao;
+- EventLog;
+- LoginAttempt;
+- Notificacao;
+- cadastros financeiros;
+- contas a pagar e receber;
+- movimentacoes;
+- conciliacoes;
+- alertas, anomalias e previsoes.
+
+`EventLog` no admin e somente leitura.
+
+## 30. Deploy e producao
+
+Para producao, revisar obrigatoriamente:
+
+- definir `SECRET_KEY` forte;
+- usar `DEBUG=False`;
+- configurar `ALLOWED_HOSTS`;
+- usar PostgreSQL;
+- configurar variaveis `POSTGRES_*`;
+- habilitar HTTPS;
+- usar `SECURE_SSL_REDIRECT=True`;
+- usar `SESSION_COOKIE_SECURE=True`;
+- usar `CSRF_COOKIE_SECURE=True`;
+- avaliar HSTS;
+- configurar armazenamento de `MEDIA_ROOT`;
+- configurar coleta e servico de arquivos estaticos;
+- definir rotina de backup;
+- remover ou trocar senhas demo;
+- criar usuarios reais e perfis adequados;
+- validar permissoes por tela antes de liberar operacao.
+
+## 31. Estado atual do produto
+
+Implementado:
+
+- autenticacao JWT;
+- bloqueio por tentativas falhas;
+- MFA simples para MVP;
+- painel web;
+- multiempresa;
+- perfis e permissoes;
+- cadastros financeiros;
 - servicos;
-- planos de contas;
-- centros de custo;
-- contas bancarias;
-- contas a receber;
 - contas a pagar;
-- movimentacoes financeiras.
+- contas a receber;
+- baixas e recebimentos;
+- movimentacoes;
+- fluxo de caixa;
+- DRE gerencial;
+- aprovacoes;
+- conciliacao CSV;
+- relatorios CSV/XLSX/PDF;
+- anexos em titulos;
+- auditoria imutavel com hash;
+- alertas e anomalias;
+- previsao baseline;
+- dados demo e operacionais;
+- Swagger/OpenAPI.
 
-O comando usa `update_or_create`, portanto pode ser rodado novamente sem duplicar os registros principais.
+Limitacoes conhecidas do MVP:
 
-## 17. Regras financeiras importantes
+- integracao bancaria real ainda nao existe;
+- importacao OFX esta no backlog, mas nao implementada;
+- exclusao visual controlada ainda e limitada;
+- edicao visual completa de todos os cadastros pode evoluir;
+- anexos existem na API, mas nao ha fluxo visual completo para todos os casos;
+- MFA e simplificado;
+- permissoes existem no backend, mas o frontend ainda pode evoluir para esconder acoes por permissao;
+- relatorios sao sincronos;
+- IA e baseada em heuristicas simples, sem fila e sem modelo treinado.
 
-### Valores
+## 32. Checklist para entrega de mudancas
 
-- Valor original de conta deve ser maior que zero.
-- Valores de desconto, juros, multa e acrescimo nao podem ser negativos.
-- Desconto nao pode ser maior que o valor original.
-- Data de vencimento nao pode ser anterior a data de emissao.
-
-### Baixas
-
-- Conta paga nao pode receber baixa novamente.
-- Conta cancelada nao pode ser baixada.
-- Baixa nao pode ultrapassar saldo pendente.
-- Baixa parcial atualiza status para pago parcial ou recebido parcial.
-
-### Aprovacoes
-
-- Conta com aprovacao pendente nao pode ser baixada.
-- Conta aprovada passa para agendada.
-- Conta reprovada passa para reprovado.
-
-### Cancelamento
-
-- Conta paga/recebida nao pode ser cancelada pela regra de servico.
-- Cancelamentos precisam de justificativa na API.
-
-## 18. Permissoes
-
-O sistema usa permissoes por modulo, tela e acao.
-
-Formato:
-
-```text
-financeiro.contas_pagar.editar
-financeiro.contas_pagar.baixar
-financeiro.contas_receber.receber
-financeiro.relatorios.exportar
-```
-
-Acoes comuns:
-
-- visualizar;
-- editar;
-- excluir;
-- baixar;
-- receber;
-- aprovar;
-- exportar;
-- importar;
-- conciliar.
-
-Perfis padrao:
-
-- Administrador;
-- Financeiro;
-- Diretoria;
-- Auditor.
-
-## 19. Manutencao e validacao
-
-Antes de entregar mudancas:
+Antes de publicar alteracoes:
 
 ```powershell
 .\.venv\Scripts\python.exe manage.py check
 .\.venv\Scripts\python.exe manage.py test core financeiro inteligencia --verbosity 2
 node --check core\static\frontend\js\app.js
+node --check core\static\frontend\js\api.js
 node --check core\static\frontend\js\data.js
 node --check core\static\frontend\js\ui.js
+git status -sb
 ```
-
-Para verificar a API:
-
-```powershell
-.\.venv\Scripts\python.exe manage.py shell
-```
-
-Use o `APIClient` do DRF ou acesse a documentacao Swagger em `/api/docs/`.
-
-## 20. Estado atual do produto
-
-Funcionalidades prontas:
-
-- login JWT;
-- painel executivo;
-- DRE completa com abre/fecha;
-- ocultar/mostrar valores;
-- cadastros operacionais;
-- contas a receber;
-- contas a pagar;
-- aprovacoes;
-- auditoria;
-- relatorios;
-- dados operacionais de demonstracao;
-- API REST;
-- admin Django.
-
-Pontos que podem evoluir:
-
-- edicao visual de cadastros ja existentes;
-- exclusao visual controlada;
-- conciliacao bancaria via tela completa;
-- anexos pelo frontend;
-- dashboards por empresa em ambiente multiempresa real;
-- permissao visual por perfil;
-- filtros avancados por centro de custo e plano de contas;
-- integracoes bancarias reais;
-- filas e tarefas assincronas para IA e relatorios.

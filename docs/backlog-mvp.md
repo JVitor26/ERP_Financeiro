@@ -1,54 +1,112 @@
-# Backlog Inicial
+# Backlog e roadmap
 
-## Sprint 1 - Fundacao
+Este arquivo registra o que foi planejado para o MVP, o que ja esta implementado e o que permanece como evolucao.
 
-- Criar projeto Django.
-- Criar apps `core`, `financeiro` e `inteligencia`.
-- Modelar empresas, usuarios, perfis, permissoes e modulos.
-- Criar `EventLog`.
-- Registrar modelos no admin.
-- Definir requisitos e modelo de dados do MVP.
+## 1. MVP implementado
 
-## Sprint 2 - Financeiro base
+### Fundacao
 
-- Implementar centros de custo.
-- Implementar plano de contas.
-- Implementar contas bancarias.
-- Implementar clientes e fornecedores.
-- Implementar contas a pagar.
-- Implementar contas a receber.
-- Implementar baixa parcial e total.
-- Criar eventos de baixa.
+- Projeto Django criado.
+- Apps `core`, `financeiro` e `inteligencia` criados.
+- Modelagem de empresas, usuarios, perfis, permissoes e modulos.
+- `EventLog` imutavel criado.
+- Modelos registrados no admin.
+- Requisitos, arquitetura, API e modelo de dados documentados.
 
-## Sprint 3 - Fluxo e auditoria
+### Financeiro base
 
-- Criar movimentacoes financeiras.
-- Criar resumo de fluxo de caixa.
-- Criar exclusao logica auditada.
-- Auditar alteracoes criticas.
-- Criar filtros por empresa e periodo.
+- Centros de custo.
+- Plano de contas.
+- Contas bancarias.
+- Clientes.
+- Fornecedores.
+- Servicos.
+- Contas a pagar.
+- Contas a receber.
+- Baixa parcial e total.
+- Recebimento parcial e total.
+- Eventos de baixa.
+- Cancelamento auditado.
+- Exclusao logica.
+- Renegociacao de recebiveis.
+- Anexos financeiros.
 
-## Sprint 4 - Dashboard e relatorios
+### Fluxo e auditoria
+
+- Movimentacoes financeiras.
+- Resumo de fluxo de caixa.
+- Dashboard financeiro.
+- DRE gerencial.
+- Filtros por empresa e periodo.
+- Auditoria de alteracoes criticas.
+- Hash sequencial em eventos.
+- Login com auditoria.
+- Bloqueio por tentativas falhas.
+
+### Dashboard e relatorios
 
 - API de cards financeiros.
-- API de grafico de receitas e despesas.
+- Grafico de entradas e saidas no frontend.
+- DRE no frontend.
+- Agenda de vencimentos.
 - Relatorio de contas a pagar.
 - Relatorio de contas a receber.
+- Relatorio de fluxo de caixa.
 - Relatorio de eventos.
 - Exportacao CSV.
+- Exportacao XLSX.
+- Exportacao PDF.
+- Historico de exportacao por auditoria.
 
-## Sprint 5 - IA baseline
+### Inteligencia baseline
 
 - Detector de pagamentos duplicados.
 - Detector de valores fora do padrao por fornecedor.
-- Previsao simples de caixa para 60 dias.
+- Previsao simples de caixa.
 - Painel de alertas.
+- Painel de anomalias.
+- Feedback de analise.
 - Eventos automaticos de risco.
 
-## Sprint 6 - Conciliacao
+### Conciliacao
 
 - Importacao CSV.
-- Importacao OFX.
-- Sugestao de conciliacao por valor, data e historico.
+- Sugestao de conciliacao por valor e data aproximada.
 - Conciliacao manual.
-- Relatorio de divergencias.
+- Status de conciliacao.
+- Marcacao de movimentacao como conciliada.
+
+## 2. Evolucao de curto prazo
+
+- Importacao OFX.
+- Tela completa para anexos.
+- Edicao visual completa de registros existentes.
+- Exclusao visual controlada com confirmacao e justificativa.
+- Filtros avancados no frontend por centro de custo e plano de contas.
+- Controle visual de permissoes por perfil.
+- Melhorar tela de conciliacao com revisao de sugestoes.
+- Criar testes de API por endpoint.
+- Criar testes de frontend para fluxos principais.
+
+## 3. Evolucao de medio prazo
+
+- PostgreSQL como ambiente padrao de homologacao.
+- Deploy produtivo com HTTPS.
+- Fila assincrona para relatorios.
+- Fila assincrona para varreduras de IA.
+- Jobs agendados para previsoes recorrentes.
+- Logs estruturados.
+- Rotina formal de backup e restore.
+- Auditoria de acesso a dados sensiveis.
+- Integracao bancaria por API.
+
+## 4. Evolucao de longo prazo
+
+- Motor contabil.
+- Modulo fiscal.
+- Integracao com notas fiscais.
+- App mobile.
+- Modelos de machine learning treinados.
+- Alertas por email, WhatsApp, SMS e push em producao.
+- Conector com BI externo.
+- Permissoes multiempresa avancadas por grupo economico.
